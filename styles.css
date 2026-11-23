@@ -121,7 +121,7 @@ code {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .status-pill {
@@ -130,6 +130,10 @@ code {
   padding: 2px 7px;
   border-radius: 999px;
   margin-left: 4px;
+}
+
+#ai-settings-label.hidden + .status-pill {
+  margin-left: 0;
 }
 
 .status-pill-off {
@@ -1299,6 +1303,32 @@ code {
 }
 
 @media (max-width: 560px) {
+  .app-header {
+    padding: 10px 12px;
+  }
+
+  .header-inner {
+    gap: 10px;
+  }
+
+  .header-actions {
+    width: 100%;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .header-actions .btn {
+    padding: 7px 10px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    gap: 5px;
+  }
+
+  .status-pill {
+    font-size: 0.68rem;
+    padding: 2px 6px;
+  }
+
   .chesscom-form {
     flex-direction: column;
   }

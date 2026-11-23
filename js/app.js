@@ -7,19 +7,6 @@
   const DEEP_DEPTH = 15;
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-  const SAMPLE_PGN = `[Event "Partida de Exemplo - Ataque no Roque"]
-[Site "Chess Analyzer"]
-[Date "2026.11.20"]
-[White "Jogador Local"]
-[Black "Amigo"]
-[WhiteElo "950"]
-[BlackElo "940"]
-[Result "0-1"]
-
-1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. d3 Bc5 5. O-O d6 6. Bg5 h6 7. Bh4 g5 8. Bg3 h5
-9. Nxg5 h4 10. Nxf7 hxg3 11. Nxd8 Bg4 12. Qd2 Nd4 13. Nc3 Nf3+ 14. gxf3 Bxf3
-15. hxg3 Rh1# 0-1`;
-
   const UP_ARROW_SVG =
     '<svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>';
 
@@ -61,8 +48,6 @@
     els.btnFetchChesscom = document.getElementById('btn-fetch-chesscom');
     els.pgnInput = document.getElementById('pgn-input');
     els.btnLoadPgn = document.getElementById('btn-load-pgn');
-    els.btnLoadSample = document.getElementById('btn-load-sample');
-    els.btnLoadSamplePgn = document.getElementById('btn-load-sample-pgn');
     els.loaderFeedback = document.getElementById('loader-feedback');
 
     els.playerTopColor = document.getElementById('player-top-color');
@@ -109,6 +94,7 @@
 
     els.btnOpenSettings = document.getElementById('btn-open-settings');
     els.btnOpenTutorial = document.getElementById('btn-open-tutorial');
+    els.aiSettingsLabel = document.getElementById('ai-settings-label');
     els.aiStatusBadge = document.getElementById('ai-status-badge');
 
     els.settingsModal = document.getElementById('settings-modal');
@@ -1153,31 +1139,20 @@
     }
   }
 
-  function handleLoadSample() {
-    els.pgnInput.value = SAMPLE_PGN;
-    state.activeRecentGameId = null;
-    try {
-      loadGameFromPgn(SAMPLE_PGN, {
-        gameId: 'sample-game',
-        orientation: 'white'
-      });
-      showLoaderFeedback(
-        'Partida de exemplo carregada. Veja o Stockfish detectar os erros automaticamente.',
-        'success'
-      );
-    } catch (err) {
-      showLoaderFeedback(err.message, 'error');
-    }
-  }
-
   function refreshAiStatusBadge() {
     const settings = ChessApp.ai.getSettings();
     const key = ChessApp.ai.getActiveKey(settings);
     if (key) {
       const label = settings.provider === 'groq' ? 'Groq ativo' : 'Gemini ativo';
+      if (els.aiSettingsLabel) {
+        els.aiSettingsLabel.classList.add('hidden');
+      }
       els.aiStatusBadge.textContent = label;
       els.aiStatusBadge.className = 'status-pill status-pill-on';
     } else {
+      if (els.aiSettingsLabel) {
+        els.aiSettingsLabel.classList.remove('hidden');
+      }
       els.aiStatusBadge.textContent = 'Sem chave';
       els.aiStatusBadge.className = 'status-pill status-pill-off';
     }
@@ -1303,8 +1278,6 @@
 
     els.chesscomForm.addEventListener('submit', handleChessComSearch);
     els.btnLoadPgn.addEventListener('click', handleLoadPgnClick);
-    els.btnLoadSample.addEventListener('click', handleLoadSample);
-    els.btnLoadSamplePgn.addEventListener('click', handleLoadSample);
 
     els.btnFirst.addEventListener('click', function () {
       goToPly(0);

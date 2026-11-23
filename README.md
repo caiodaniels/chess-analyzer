@@ -8,7 +8,7 @@ Página web gratuita, visual e sem necessidade de servidor para analisar partida
 
 - **Importação de partidas:**
   - Busca automática pela API pública do **Chess.com** (abre a última partida com o tabuleiro virado para a sua cor e lista as últimas 20 para trocar com 1 clique).
-  - Colagem de texto **PGN** ou carregamento imediato da **partida de exemplo**.
+  - Colagem de texto **PGN**.
 - **Tabuleiro interativo e avaliação:**
   - Navegação completa pelos lances (botões e teclas `←`, `→`, `Home`, `End`, `F` para girar o tabuleiro).
   - Barra de avaliação vertical em tempo real.
@@ -28,7 +28,7 @@ Página web gratuita, visual e sem necessidade de servidor para analisar partida
 
 1. Dê um duplo clique em `abrir-site.bat` na pasta do projeto.
 2. Ele inicia um servidor local (via Python ou Node.js) e abre `http://localhost:8000` automaticamente.
-3. Clique em **Carregar partida de exemplo** ou digite um usuário do Chess.com.
+3. Digite um usuário do Chess.com ou cole o texto PGN da partida.
 
 ---
 

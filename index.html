@@ -47,7 +47,7 @@
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
           </svg>
-          <span>Configurar IA</span>
+          <span id="ai-settings-label">Configurar IA</span>
           <span id="ai-status-badge" class="status-pill status-pill-off">Sem chave</span>
         </button>
       </div>
@@ -77,9 +77,6 @@
           aria-controls="tab-panel-pgn"
         >
           Colar texto PGN
-        </button>
-        <button id="btn-load-sample" type="button" class="btn btn-ghost btn-sample-top">
-          Carregar partida de exemplo
         </button>
       </div>
 
@@ -113,9 +110,6 @@
         <div class="pgn-actions">
           <button id="btn-load-pgn" type="button" class="btn btn-primary">
             Carregar e analisar PGN
-          </button>
-          <button id="btn-load-sample-pgn" type="button" class="btn btn-secondary">
-            Usar partida de exemplo
           </button>
         </div>
       </div>
@@ -213,7 +207,7 @@
             <div>
               <h2 class="panel-title">Análise Stockfish</h2>
               <p id="analysis-status-text" class="analysis-subtext">
-                Carregue uma partida acima ou clique em "Carregar partida de exemplo".
+                Carregue uma partida acima pelo Chess.com ou colando um PGN.
               </p>
             </div>
             <button id="btn-deep-analysis" type="button" class="btn btn-secondary btn-sm" disabled>
