@@ -12,7 +12,7 @@
       models: [
         {
           id: 'gemini-3.5-flash-lite',
-          label: 'Gemini 3.5 Flash-Lite (Recomendado - Maior cota grátis)'
+          label: 'Gemini 3.5 Flash-Lite (Recomendado)'
         },
         { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Alternativa)' },
         { id: 'gemini-3-flash', label: 'Gemini 3 Flash (Alternativa)' }
@@ -21,7 +21,7 @@
     groq: {
       name: 'Groq',
       models: [
-        { id: 'qwen/qwen3.8-27b', label: 'Qwen 3.8 27B (Recomendado - Grátis)' },
+        { id: 'qwen/qwen3.8-27b', label: 'Qwen 3.8 27B (Recomendado)' },
         { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant (Alternativa)' }
       ]
     }

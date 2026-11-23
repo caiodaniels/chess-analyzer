@@ -1284,7 +1284,7 @@
     tabBtns.forEach(function (btn) {
       btn.classList.toggle('active', btn.dataset.tutorialTab === tabName);
     });
-    ['gemini', 'groq', 'hosting'].forEach(function (name) {
+    ['gemini', 'groq'].forEach(function (name) {
       const panel = document.getElementById('tutorial-panel-' + name);
       if (panel) {
         panel.classList.toggle('hidden', name !== tabName);

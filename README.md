@@ -16,7 +16,7 @@ Página web gratuita, visual e sem necessidade de servidor para analisar partida
   - Inicia no modo rápido (profundidade 10) e permite refazer no modo profundo (profundidade 15).
   - Lista os **Momentos Críticos** (`Capivara`, `Erro`, `Imprecisão`) e desenha setas coloridas no tabuleiro (vermelha para o lance errado jogado e verde para o melhor lance).
 - **Explicações com IA e Chat sobre a Posição:**
-  - Explicação direta e objetiva nos momentos críticos (sem enrolação, com botão para recolher/expandir).
+  - Explicação direta e objetiva nos momentos críticos (com botão para recolher/expandir).
   - **Chat sobre a Posição:** calcula primeiro no Stockfish (`MultiPV` com os melhores lances e avaliação automática de lances alternativos citados na pergunta em notação em português ou inglês, como `Cf6`, `Bb5`, `roque curto`) antes de enviar para a IA, com setas azuis clicáveis no tabuleiro e reset automático ao trocar de lance.
   - Privacidade total: suas chaves da API ficam salvas apenas no navegador (`localStorage`).
 
@@ -32,15 +32,9 @@ Página web gratuita, visual e sem necessidade de servidor para analisar partida
 
 ---
 
-## Como ativar as explicações com IA (grátis)
+## Como ativar as explicações com IA
 
-Clique em **Configurar IA** ou **Tutorial & Chave Grátis** no topo do site:
+Clique em **Configurar IA** ou **Tutorial API IAs** no topo do site:
 
 - **Google Gemini (padrão `gemini-3.5-flash-lite`):** gere sua chave gratuita em [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 - **Groq (padrão `qwen/qwen3.8-27b`):** gere sua chave gratuita em [console.groq.com/keys](https://console.groq.com/keys).
-
----
-
-## Hospedagem gratuita
-
-Como tudo roda no navegador (arquivos estáticos), você pode hospedar gratuitamente no **GitHub Pages** ou arrastando a pasta no **Netlify Drop** ([app.netlify.com/drop](https://app.netlify.com/drop)).

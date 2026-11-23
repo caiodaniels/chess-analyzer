@@ -40,7 +40,7 @@
           <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
           </svg>
-          <span>Tutorial &amp; Chave Grátis</span>
+          <span>Tutorial API IAs</span>
         </button>
         <button id="btn-open-settings" type="button" class="btn btn-secondary">
           <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -309,10 +309,10 @@
         <div id="settings-notice" class="notice-box hidden"></div>
 
         <div class="form-group">
-          <label class="form-label" for="ai-provider-select">Qual serviço gratuito de IA você quer usar?</label>
+          <label class="form-label" for="ai-provider-select">Qual serviço de IA você quer usar?</label>
           <select id="ai-provider-select" class="input">
-            <option value="gemini">Google Gemini API (Grátis via Google AI Studio)</option>
-            <option value="groq">Groq API (Grátis e ultrarrápida)</option>
+            <option value="gemini">Google Gemini API</option>
+            <option value="groq">Groq API</option>
           </select>
         </div>
 
@@ -367,19 +367,16 @@
     <div class="modal-backdrop" data-close-modal="tutorial-modal"></div>
     <div class="modal-content modal-content-lg">
       <div class="modal-header">
-        <h2 id="tutorial-modal-title">Guia Rápido: Chave de IA Grátis &amp; Hospedagem</h2>
+        <h2 id="tutorial-modal-title">Tutorial API IAs</h2>
         <button type="button" class="btn-close" data-close-modal="tutorial-modal" aria-label="Fechar">&times;</button>
       </div>
       <div class="modal-body">
         <div class="tutorial-tabs" role="tablist">
           <button class="tutorial-tab-btn active" type="button" data-tutorial-tab="gemini">
-            1. Google Gemini (Grátis)
+            1. Google Gemini
           </button>
           <button class="tutorial-tab-btn" type="button" data-tutorial-tab="groq">
-            2. Groq (Grátis)
-          </button>
-          <button class="tutorial-tab-btn" type="button" data-tutorial-tab="hosting">
-            3. Publicar Grátis (Netlify &amp; GitHub)
+            2. Groq
           </button>
         </div>
 
@@ -408,31 +405,6 @@
             <li>Copie a chave exibida na hora (ela começa com <code>gsk_...</code>) — ela só aparece uma vez!</li>
             <li>Aqui no site, clique em <strong>Configurar IA</strong>, selecione <strong>Groq API</strong>, cole a chave e salve.</li>
           </ol>
-        </div>
-
-        <div id="tutorial-panel-hosting" class="tutorial-panel hidden">
-          <h3>Como publicar o site de graça para enviar o link aos amigos</h3>
-          <p>Como este site funciona 100% no navegador (sem banco de dados e sem servidor), você pode colocá-lo no ar gratuitamente de duas formas fáceis:</p>
-
-          <div class="hosting-option">
-            <h4>Opção A — Netlify Drop (Mais fácil: basta arrastar a pasta)</h4>
-            <ol class="tutorial-steps">
-              <li>Acesse <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer">app.netlify.com/drop</a> (crie uma conta grátis se quiser que o link dure para sempre).</li>
-              <li>Pegue a pasta inteira do projeto (onde está o arquivo <code>index.html</code>, <code>styles.css</code>, <code>js/</code> e <code>vendor/</code>) e arraste para dentro da área tracejada do site.</li>
-              <li>Em poucos segundos, o Netlify gera um link (ex: <code>https://seu-site.netlify.app</code>) pronto para mandar no WhatsApp dos amigos.</li>
-            </ol>
-          </div>
-
-          <div class="hosting-option">
-            <h4>Opção B — GitHub Pages (Link permanente gratuito)</h4>
-            <ol class="tutorial-steps">
-              <li>Crie uma conta gratuita em <a href="https://github.com" target="_blank" rel="noopener noreferrer">github.com</a> e crie um novo repositório público (ex: <code>chess-analyzer</code>).</li>
-              <li>Clique em <strong>"Add file" → "Upload files"</strong> e suba todos os arquivos e pastas do projeto mantendo a mesma organização (<code>index.html</code>, <code>styles.css</code>, <code>js</code>, <code>vendor</code>).</li>
-              <li>No repositório, vá em <strong>Settings → Pages</strong> (mais detalhes em <a href="https://pages.github.com" target="_blank" rel="noopener noreferrer">pages.github.com</a>).</li>
-              <li>Em <strong>Branch</strong>, selecione <code>main</code> e pasta <code>/ (root)</code>, depois clique em <strong>Save</strong>.</li>
-              <li>Em cerca de 1 a 2 minutos, seu link <code>https://seu-usuario.github.io/chess-analyzer/</code> estará no ar de graça.</li>
-            </ol>
-          </div>
         </div>
       </div>
       <div class="modal-footer">
