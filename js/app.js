@@ -6,6 +6,7 @@
   const FAST_DEPTH = 10;
   const DEEP_DEPTH = 15;
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const CHESSCOM_USER_STORAGE_KEY = 'xadrez_analise_chesscom_user';
 
   const UP_ARROW_SVG =
     '<svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>';
@@ -1085,9 +1086,25 @@
     els.recentGamesList.appendChild(frag);
   }
 
-  async function handleChessComSearch(e) {
-    e.preventDefault();
-    const username = els.chesscomUsername.value.trim();
+  function getSavedChessComUsername() {
+    try {
+      return (global.localStorage.getItem(CHESSCOM_USER_STORAGE_KEY) || '').trim();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function saveChessComUsername(username) {
+    try {
+      const clean = (username || '').trim();
+      if (clean) {
+        global.localStorage.setItem(CHESSCOM_USER_STORAGE_KEY, clean);
+      }
+    } catch (e) {}
+  }
+
+  async function searchChessComUser(rawUsername) {
+    const username = (rawUsername || '').trim();
     if (!username) {
       showLoaderFeedback('Digite o nome de usuário do Chess.com para buscar.', 'error');
       return;
@@ -1099,9 +1116,13 @@
 
     try {
       const games = await ChessApp.chesscom.fetchRecentGames(username, 20);
+      const resolvedName = games[0].userName || username;
+      saveChessComUsername(resolvedName);
+      els.chesscomUsername.value = resolvedName;
+
       state.recentGames = games;
       state.activeRecentGameId = games[0].id;
-      renderRecentGamesList(games[0].userName || username);
+      renderRecentGamesList(resolvedName);
 
       loadGameFromPgn(games[0].pgn, {
         gameId: games[0].id,
@@ -1110,7 +1131,7 @@
 
       showLoaderFeedback(
         'Última partida de ' +
-          (games[0].userName || username) +
+          resolvedName +
           ' carregada. Você também pode escolher entre as ' +
           games.length +
           ' partidas listadas abaixo.',
@@ -1122,6 +1143,11 @@
       els.btnFetchChesscom.disabled = false;
       els.btnFetchChesscom.textContent = 'Buscar partidas';
     }
+  }
+
+  function handleChessComSearch(e) {
+    e.preventDefault();
+    searchChessComUser(els.chesscomUsername.value);
   }
 
   function handleLoadPgnClick() {
@@ -1408,6 +1434,12 @@
     resetChatForCurrentPly();
     updatePlayerBars();
     renderCurrentPosition();
+
+    const savedUser = getSavedChessComUsername();
+    if (savedUser) {
+      els.chesscomUsername.value = savedUser;
+      searchChessComUser(savedUser);
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);
