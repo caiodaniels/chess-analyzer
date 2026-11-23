@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess Analyzer</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="vendor/chess.min.js"></script>
+  <script defer src="js/pieces.js"></script>
+  <script defer src="js/board.js"></script>
+  <script defer src="js/chesscom.js"></script>
+  <script defer src="js/engine.js"></script>
+  <script defer src="js/ai.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <div id="file-protocol-banner" class="warning-banner hidden" role="alert">
+    <div>
+      <strong>Atenção:</strong> Você abriu este arquivo direto pelo navegador (<code>file://</code>).
+      Os navegadores bloqueiam o motor Stockfish nesse modo. Para usar todos os recursos no seu computador, dê um duplo clique em <code>abrir-site.bat</code> na pasta do projeto.
+    </div>
+  </div>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+            <path d="M19 22H5v-2h14v2M17.16 8.26A4.98 4.98 0 0 0 13 5V3h-2v2.07c-.68.12-1.34.34-1.95.67L7.5 4.2 6.08 5.62l1.15 1.15C6.14 7.77 5.38 9.1 5.1 10.6L4 12.5l1.62 1.24c.54.41 1.27.43 1.84.07L9 12.83c.39.5.94.88 1.58 1.06-.34 1.38-1.45 2.48-2.92 3.16L6 18v1h12v-1c0-3.28-1.2-6.17-.84-9.74Z"/>
+          </svg>
+        </span>
+        <div>
+          <h1>Chess Analyzer</h1>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-open-tutorial" type="button" class="btn btn-secondary">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+          </svg>
+          <span>Tutorial &amp; Chave Grátis</span>
+        </button>
+        <button id="btn-open-settings" type="button" class="btn btn-secondary">
+          <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+          </svg>
+          <span>Configurar IA</span>
+          <span id="ai-status-badge" class="status-pill status-pill-off">Sem chave</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Barra de entrada de partida -->
+    <section class="loader-card" aria-label="Carregar partida">
+      <div class="loader-tabs" role="tablist">
+        <button
+          id="tab-btn-chesscom"
+          class="tab-btn active"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="tab-panel-chesscom"
+        >
+          Buscar do Chess.com
+        </button>
+        <button
+          id="tab-btn-pgn"
+          class="tab-btn"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="tab-panel-pgn"
+        >
+          Colar texto PGN
+        </button>
+        <button id="btn-load-sample" type="button" class="btn btn-ghost btn-sample-top">
+          Carregar partida de exemplo
+        </button>
+      </div>
+
+      <div id="tab-panel-chesscom" class="tab-panel active" role="tabpanel">
+        <form id="chesscom-form" class="chesscom-form">
+          <label for="chesscom-username" class="sr-only">Nome de usuário do Chess.com</label>
+          <input
+            id="chesscom-username"
+            type="text"
+            class="input"
+            placeholder="Digite o usuário do Chess.com (ex: Hikaru, MagnusCarlsen ou o seu)"
+            autocomplete="off"
+          />
+          <button id="btn-fetch-chesscom" type="submit" class="btn btn-primary">
+            Buscar partidas
+          </button>
+        </form>
+        <p class="helper-text">
+          A última partida abre na hora (com o tabuleiro virado para a sua cor) e as últimas 20 ficam listadas abaixo para trocar com 1 clique.
+        </p>
+      </div>
+
+      <div id="tab-panel-pgn" class="tab-panel hidden" role="tabpanel">
+        <label for="pgn-input" class="sr-only">Texto PGN da partida</label>
+        <textarea
+          id="pgn-input"
+          class="textarea"
+          rows="4"
+          placeholder="Cole aqui o texto PGN da sua partida (ex: 1. e4 e5 2. Nf3 Nc6 ...)"
+        ></textarea>
+        <div class="pgn-actions">
+          <button id="btn-load-pgn" type="button" class="btn btn-primary">
+            Carregar e analisar PGN
+          </button>
+          <button id="btn-load-sample-pgn" type="button" class="btn btn-secondary">
+            Usar partida de exemplo
+          </button>
+        </div>
+      </div>
+
+      <div id="loader-feedback" class="loader-feedback hidden" role="status" aria-live="polite"></div>
+    </section>
+
+    <!-- Área principal: Tabuleiro à esquerda, Análise e lances à direita -->
+    <section class="workspace">
+      <div class="board-column">
+        <div id="player-top" class="player-bar">
+          <div class="player-identity">
+            <span id="player-top-color" class="color-dot color-black" aria-hidden="true"></span>
+            <span id="player-top-name" class="player-name">Pretas</span>
+          </div>
+          <span id="player-top-rating" class="player-rating"></span>
+        </div>
+
+        <div class="board-stage">
+          <div id="eval-bar" class="eval-bar" aria-label="Barra de avaliação da posição">
+            <div id="eval-bar-fill" class="eval-bar-fill" style="height: 50%"></div>
+            <span id="eval-score-label" class="eval-score-label eval-label-bottom">0.0</span>
+          </div>
+
+          <div class="board-wrapper">
+            <div id="chessboard" class="chessboard" aria-label="Tabuleiro de xadrez"></div>
+            <svg
+              id="board-arrows"
+              class="board-arrows"
+              viewBox="0 0 800 800"
+              aria-hidden="true"
+            ></svg>
+          </div>
+        </div>
+
+        <div id="player-bottom" class="player-bar">
+          <div class="player-identity">
+            <span id="player-bottom-color" class="color-dot color-white" aria-hidden="true"></span>
+            <span id="player-bottom-name" class="player-name">Brancas</span>
+          </div>
+          <span id="player-bottom-rating" class="player-rating"></span>
+        </div>
+
+        <div class="board-controls">
+          <div class="nav-group" role="group" aria-label="Navegação pelos lances">
+            <button id="btn-first" type="button" class="btn btn-icon" title="Início (Home)" aria-label="Primeiro lance">
+              <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 18L13 12l6-6M11 18L5 12l6-6"/>
+              </svg>
+            </button>
+            <button id="btn-prev" type="button" class="btn btn-icon" title="Voltar lance (Seta Esquerda)" aria-label="Lance anterior">
+              <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+            </button>
+            <button id="btn-next" type="button" class="btn btn-icon" title="Avançar lance (Seta Direita)" aria-label="Próximo lance">
+              <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+            <button id="btn-last" type="button" class="btn btn-icon" title="Último lance (End)" aria-label="Último lance">
+              <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 18l6-6-6-6M13 18l6-6-6-6"/>
+              </svg>
+            </button>
+          </div>
+          <button id="btn-flip" type="button" class="btn btn-secondary" title="Girar tabuleiro (Tecla F)">
+            <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+              <path d="M16 16h5v5"/>
+            </svg>
+            <span>Girar tabuleiro</span>
+          </button>
+        </div>
+
+        <div id="arrow-legend" class="arrow-legend hidden">
+          <span id="legend-red-item" class="legend-item hidden">
+            <span class="legend-swatch swatch-red"></span> Lance jogado (erro)
+          </span>
+          <span id="legend-green-item" class="legend-item hidden">
+            <span class="legend-swatch swatch-green"></span> Melhor lance (Stockfish)
+          </span>
+          <span id="legend-blue-item" class="legend-item hidden">
+            <span class="legend-swatch swatch-blue"></span> Lance citado no chat
+          </span>
+        </div>
+      </div>
+
+      <div class="analysis-column">
+        <!-- Status do Stockfish -->
+        <div class="panel-card analysis-status-card">
+          <div class="analysis-header">
+            <div>
+              <h2 class="panel-title">Análise Stockfish</h2>
+              <p id="analysis-status-text" class="analysis-subtext">
+                Carregue uma partida acima ou clique em "Carregar partida de exemplo".
+              </p>
+            </div>
+            <button id="btn-deep-analysis" type="button" class="btn btn-secondary btn-sm" disabled>
+              Refazer análise profunda
+            </button>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div id="analysis-progress-bar" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Momentos Críticos -->
+        <div class="panel-card critical-card">
+          <div class="panel-heading-row">
+            <h2 class="panel-title">Momentos Críticos</h2>
+            <span id="critical-count-badge" class="count-badge hidden">0</span>
+          </div>
+          <div id="critical-moments-list" class="critical-list">
+            <div class="empty-state">
+              Os principais erros da partida aparecerão aqui assim que a análise terminar. Clique em qualquer um para ver as setas vermelha e verde no tabuleiro.
+            </div>
+          </div>
+        </div>
+
+        <!-- Mini-Chat sobre a Posição -->
+        <div id="position-chat-card" class="panel-card chat-card">
+          <div class="panel-heading-row">
+            <div class="chat-title-group">
+              <h2 class="panel-title">Chat sobre a Posição</h2>
+              <span id="chat-context-badge" class="chat-context-badge">Posição inicial</span>
+            </div>
+            <button id="btn-clear-chat" type="button" class="btn btn-ghost btn-sm">
+              Limpar
+            </button>
+          </div>
+          <div id="chat-messages" class="chat-messages">
+            <div class="chat-empty-state">
+              Pergunte sobre o lance ou posição atual (ex: "por que não posso jogar Cf6?" ou "qual o plano aqui?"). O Stockfish calcula primeiro antes da IA responder.
+            </div>
+          </div>
+          <form id="chat-form" class="chat-form">
+            <label for="chat-input" class="sr-only">Pergunta sobre a posição atual</label>
+            <input
+              id="chat-input"
+              type="text"
+              class="input"
+              placeholder="Pergunte sobre este lance ou posição..."
+              autocomplete="off"
+            />
+            <button id="btn-chat-send" type="submit" class="btn btn-primary btn-chat-send" title="Enviar pergunta" aria-label="Enviar pergunta">
+              <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 2L11 13"/>
+                <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- Lista de lances -->
+        <div class="panel-card moves-card">
+          <div class="panel-heading-row">
+            <h2 class="panel-title">Lances da Partida</h2>
+            <span id="game-result-badge" class="result-badge hidden"></span>
+          </div>
+          <div id="moves-list" class="moves-list">
+            <div class="empty-state">Nenhuma partida carregada ainda.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lista de partidas recentes do Chess.com -->
+    <section id="recent-games-section" class="panel-card recent-games-section hidden" aria-label="Últimas partidas no Chess.com">
+      <div class="panel-heading-row">
+        <div>
+          <h2 id="recent-games-title" class="panel-title">Últimas Partidas no Chess.com</h2>
+          <p class="helper-text">Clique em qualquer partida abaixo para abrir no tabuleiro e analisar automaticamente.</p>
+        </div>
+      </div>
+      <div id="recent-games-list" class="recent-games-list"></div>
+    </section>
+  </main>
+
+  <!-- Modal de Configurações da IA -->
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+    <div class="modal-backdrop" data-close-modal="settings-modal"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="settings-modal-title">Configurar IA (Explicação de Lances)</h2>
+        <button type="button" class="btn-close" data-close-modal="settings-modal" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="settings-notice" class="notice-box hidden"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="ai-provider-select">Qual serviço gratuito de IA você quer usar?</label>
+          <select id="ai-provider-select" class="input">
+            <option value="gemini">Google Gemini API (Grátis via Google AI Studio)</option>
+            <option value="groq">Groq API (Grátis e ultrarrápida)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="ai-model-select">Modelo de IA</label>
+          <div class="password-row">
+            <select id="ai-model-select" class="input"></select>
+            <button id="btn-refresh-models" type="button" class="btn btn-secondary" title="Buscar os modelos ativos da sua conta">
+              Detectar
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="ai-api-key-input">Sua chave da API (API Key)</label>
+          <div class="password-row">
+            <input
+              id="ai-api-key-input"
+              type="password"
+              class="input"
+              placeholder="Cole sua chave aqui..."
+              autocomplete="off"
+            />
+            <button id="btn-toggle-key-visibility" type="button" class="btn btn-secondary">
+              Mostrar
+            </button>
+          </div>
+          <p class="helper-text">
+            Não sabe onde pegar sua chave?
+            <button id="btn-open-tutorial-from-settings" type="button" class="link-btn">
+              Abrir mini-tutorial passo a passo
+            </button>
+          </p>
+        </div>
+
+        <div class="privacy-box">
+          <strong>Privacidade:</strong> Sua chave fica salva apenas no seu próprio navegador (<code>localStorage</code>). Este site não tem servidor nem guarda suas chaves.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-clear-settings" type="button" class="btn btn-danger-outline">Limpar chave</button>
+        <div class="modal-footer-right">
+          <button type="button" class="btn btn-secondary" data-close-modal="settings-modal">Cancelar</button>
+          <button id="btn-save-settings" type="button" class="btn btn-primary">Salvar configuração</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Mini-Tutorial -->
+  <div id="tutorial-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tutorial-modal-title">
+    <div class="modal-backdrop" data-close-modal="tutorial-modal"></div>
+    <div class="modal-content modal-content-lg">
+      <div class="modal-header">
+        <h2 id="tutorial-modal-title">Guia Rápido: Chave de IA Grátis &amp; Hospedagem</h2>
+        <button type="button" class="btn-close" data-close-modal="tutorial-modal" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tutorial-tabs" role="tablist">
+          <button class="tutorial-tab-btn active" type="button" data-tutorial-tab="gemini">
+            1. Google Gemini (Grátis)
+          </button>
+          <button class="tutorial-tab-btn" type="button" data-tutorial-tab="groq">
+            2. Groq (Grátis)
+          </button>
+          <button class="tutorial-tab-btn" type="button" data-tutorial-tab="hosting">
+            3. Publicar Grátis (Netlify &amp; GitHub)
+          </button>
+        </div>
+
+        <div id="tutorial-panel-gemini" class="tutorial-panel active">
+          <h3>Como criar sua chave gratuita no Google AI Studio (Gemini)</h3>
+          <p>O plano gratuito do Google permite explicar dezenas de partidas por dia sem precisar colocar cartão de crédito.</p>
+          <ol class="tutorial-steps">
+            <li>Acesse o site oficial: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> e entre com sua conta Google normal (Gmail).</li>
+            <li>Clique no botão azul <strong>"Create API key"</strong> (Criar chave de API).</li>
+            <li>Se pedir para escolher ou criar um projeto, selecione o padrão e confirme.</li>
+            <li>Copie o código gerado (ele geralmente começa com <code>AIza...</code>).</li>
+            <li>Aqui no site, clique em <strong>Configurar IA</strong>, escolha <strong>Google Gemini API</strong>, cole a chave e salve.</li>
+          </ol>
+          <div class="tip-box">
+            <strong>Importante:</strong> Nunca compartilhe sua chave pública em grupos. Quando enviar este site para um amigo, cada amigo cria a própria chave grátis em menos de 1 minuto.
+          </div>
+        </div>
+
+        <div id="tutorial-panel-groq" class="tutorial-panel hidden">
+          <h3>Como criar sua chave gratuita na Groq</h3>
+          <p>A Groq oferece acesso gratuito a modelos abertos rápidos (como o Qwen 3.8 27B), ótimo como alternativa ao Gemini.</p>
+          <ol class="tutorial-steps">
+            <li>Acesse <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a> e crie uma conta gratuita (pode entrar com Google ou GitHub).</li>
+            <li>Clique em <strong>"Create API Key"</strong>.</li>
+            <li>Dê qualquer nome (ex: <code>Xadrez</code>) e clique em <strong>Submit</strong>.</li>
+            <li>Copie a chave exibida na hora (ela começa com <code>gsk_...</code>) — ela só aparece uma vez!</li>
+            <li>Aqui no site, clique em <strong>Configurar IA</strong>, selecione <strong>Groq API</strong>, cole a chave e salve.</li>
+          </ol>
+        </div>
+
+        <div id="tutorial-panel-hosting" class="tutorial-panel hidden">
+          <h3>Como publicar o site de graça para enviar o link aos amigos</h3>
+          <p>Como este site funciona 100% no navegador (sem banco de dados e sem servidor), você pode colocá-lo no ar gratuitamente de duas formas fáceis:</p>
+
+          <div class="hosting-option">
+            <h4>Opção A — Netlify Drop (Mais fácil: basta arrastar a pasta)</h4>
+            <ol class="tutorial-steps">
+              <li>Acesse <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer">app.netlify.com/drop</a> (crie uma conta grátis se quiser que o link dure para sempre).</li>
+              <li>Pegue a pasta inteira do projeto (onde está o arquivo <code>index.html</code>, <code>styles.css</code>, <code>js/</code> e <code>vendor/</code>) e arraste para dentro da área tracejada do site.</li>
+              <li>Em poucos segundos, o Netlify gera um link (ex: <code>https://seu-site.netlify.app</code>) pronto para mandar no WhatsApp dos amigos.</li>
+            </ol>
+          </div>
+
+          <div class="hosting-option">
+            <h4>Opção B — GitHub Pages (Link permanente gratuito)</h4>
+            <ol class="tutorial-steps">
+              <li>Crie uma conta gratuita em <a href="https://github.com" target="_blank" rel="noopener noreferrer">github.com</a> e crie um novo repositório público (ex: <code>chess-analyzer</code>).</li>
+              <li>Clique em <strong>"Add file" → "Upload files"</strong> e suba todos os arquivos e pastas do projeto mantendo a mesma organização (<code>index.html</code>, <code>styles.css</code>, <code>js</code>, <code>vendor</code>).</li>
+              <li>No repositório, vá em <strong>Settings → Pages</strong> (mais detalhes em <a href="https://pages.github.com" target="_blank" rel="noopener noreferrer">pages.github.com</a>).</li>
+              <li>Em <strong>Branch</strong>, selecione <code>main</code> e pasta <code>/ (root)</code>, depois clique em <strong>Save</strong>.</li>
+              <li>Em cerca de 1 a 2 minutos, seu link <code>https://seu-usuario.github.io/chess-analyzer/</code> estará no ar de graça.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-go-settings-from-tutorial" type="button" class="btn btn-primary">
+          Ir para Configurar IA
+        </button>
+        <button type="button" class="btn btn-secondary" data-close-modal="tutorial-modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.getElementById('file-protocol-banner').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
