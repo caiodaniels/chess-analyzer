@@ -19,8 +19,10 @@
     orientation: 'white',
     evals: [],
     bestMoves: [],
-    criticalMoments: [],
-    criticalByPly: {},
+    allReviews: [],
+    reviewsByPly: {},
+    reviewColor: 'w',
+    reviewFilter: 'all',
     badgeMap: {},
     explanations: {},
     loadingExplainPly: {},
@@ -77,8 +79,20 @@
     els.analysisStatusText = document.getElementById('analysis-status-text');
     els.analysisProgressBar = document.getElementById('analysis-progress-bar');
     els.btnDeepAnalysis = document.getElementById('btn-deep-analysis');
-    els.criticalCountBadge = document.getElementById('critical-count-badge');
-    els.criticalMomentsList = document.getElementById('critical-moments-list');
+    els.reviewPanelTitle = document.getElementById('review-panel-title');
+    els.btnReviewWhite = document.getElementById('btn-review-white');
+    els.btnReviewBlack = document.getElementById('btn-review-black');
+    els.reviewSummary = document.getElementById('review-summary');
+    els.reviewAccuracyPill = document.getElementById('review-accuracy-pill');
+    els.reviewCountsText = document.getElementById('review-counts-text');
+    els.reviewControls = document.getElementById('review-controls');
+    els.btnFilterAll = document.getElementById('btn-filter-all');
+    els.btnFilterErrors = document.getElementById('btn-filter-errors');
+    els.btnReviewPrev = document.getElementById('btn-review-prev');
+    els.reviewPositionCounter = document.getElementById('review-position-counter');
+    els.btnReviewNext = document.getElementById('btn-review-next');
+    els.reviewCurrentCard = document.getElementById('review-current-card');
+    els.reviewMovesList = document.getElementById('review-moves-list');
     els.gameResultBadge = document.getElementById('game-result-badge');
     els.movesList = document.getElementById('moves-list');
 
@@ -286,14 +300,14 @@
     const pos = state.positions[state.currentPly];
     const lastMove = pos.from && pos.to ? { from: pos.from, to: pos.to } : null;
 
-    const critical = state.criticalByPly[state.currentPly];
-    if (critical) {
-      if (critical.playedFrom && critical.playedTo) {
-        arrows.push({ from: critical.playedFrom, to: critical.playedTo, color: '#ef4444' });
+    const review = state.reviewsByPly[state.currentPly];
+    if (review && review.isMistake) {
+      if (review.playedFrom && review.playedTo) {
+        arrows.push({ from: review.playedFrom, to: review.playedTo, color: '#ef4444' });
         hasRed = true;
       }
-      if (critical.bestFrom && critical.bestTo) {
-        arrows.push({ from: critical.bestFrom, to: critical.bestTo, color: '#22c55e' });
+      if (review.bestFrom && review.bestTo) {
+        arrows.push({ from: review.bestFrom, to: review.bestTo, color: '#22c55e' });
         hasGreen = true;
       }
     }
@@ -325,7 +339,7 @@
 
     updateNavButtons();
     highlightActiveMove();
-    highlightActiveCriticalCard();
+    renderReviewPanel();
   }
 
   function updateNavButtons() {
@@ -414,156 +428,344 @@
     });
   }
 
-  function highlightActiveCriticalCard() {
-    const cards = els.criticalMomentsList.querySelectorAll('.critical-item');
-    cards.forEach(function (card) {
-      card.classList.toggle('active', Number(card.dataset.ply) === state.currentPly);
+  function getPlayerSideReviews(color) {
+    return state.allReviews.filter(function (r) {
+      return r.moverColor === color;
     });
   }
 
-  function renderCriticalMoments() {
-    const moments = state.criticalMoments;
-    if (state.isAnalyzing && moments.length === 0) {
-      els.criticalCountBadge.classList.add('hidden');
-      els.criticalMomentsList.innerHTML =
-        '<div class="empty-state">Calculando lances com o Stockfish... os principais erros vão aparecer aqui em instantes.</div>';
-      return;
+  function getFilteredPlayerReviews() {
+    const sideMoves = getPlayerSideReviews(state.reviewColor);
+    if (state.reviewFilter === 'errors') {
+      return sideMoves.filter(function (r) {
+        return r.isMistake;
+      });
+    }
+    return sideMoves;
+  }
+
+  function findAdjacentPlayerReview(direction) {
+    const list = getFilteredPlayerReviews();
+    if (list.length === 0) return null;
+    if (direction < 0) {
+      for (let i = list.length - 1; i >= 0; i -= 1) {
+        if (list[i].ply < state.currentPly) return list[i];
+      }
+      return null;
+    }
+    for (let i = 0; i < list.length; i += 1) {
+      if (list[i].ply > state.currentPly) return list[i];
+    }
+    return null;
+  }
+
+  function navigatePlayerReview(direction) {
+    const target = findAdjacentPlayerReview(direction);
+    if (target) {
+      goToPly(target.ply);
+    }
+  }
+
+  function formatSummaryCounts(sideMoves) {
+    const counts = { melhor: 0, bom: 0, imprecisao: 0, erro: 0, capivara: 0 };
+    sideMoves.forEach(function (r) {
+      if (counts[r.severity.key] !== undefined) {
+        counts[r.severity.key] += 1;
+      }
+    });
+    const parts = [];
+    if (counts.melhor > 0) {
+      parts.push(counts.melhor + (counts.melhor === 1 ? ' Melhor' : ' Melhores'));
+    }
+    if (counts.bom > 0) {
+      parts.push(counts.bom + (counts.bom === 1 ? ' Bom' : ' Bons'));
+    }
+    if (counts.imprecisao > 0) {
+      parts.push(counts.imprecisao + (counts.imprecisao === 1 ? ' Imprecisão' : ' Imprecisões'));
+    }
+    if (counts.erro > 0) {
+      parts.push(counts.erro + (counts.erro === 1 ? ' Erro' : ' Erros'));
+    }
+    if (counts.capivara > 0) {
+      parts.push(counts.capivara + (counts.capivara === 1 ? ' Capivara' : ' Capivaras'));
+    }
+    return parts.join(' • ');
+  }
+
+  function buildReviewVerdictCard(r) {
+    const card = document.createElement('div');
+    card.className = 'critical-item severity-' + r.severity.key;
+
+    const moveNotation =
+      r.moverColor === 'w' ? r.moveNumber + '. ' + r.playedSan : r.moveNumber + '... ' + r.playedSan;
+    const evalBeforeStr = ChessApp.board.formatEvalScore(r.evalBefore);
+    const evalAfterStr = ChessApp.board.formatEvalScore(r.evalAfter);
+
+    const top = document.createElement('div');
+    top.className = 'critical-top';
+
+    const titleWrap = document.createElement('span');
+    titleWrap.className = 'critical-title-wrap';
+    if (r.isCritical) {
+      const bang = document.createElement('span');
+      bang.className = 'critical-bang';
+      bang.title = 'Jogada crítica';
+      bang.textContent = '!';
+      titleWrap.appendChild(bang);
     }
 
-    if (!moments || moments.length === 0) {
-      els.criticalCountBadge.classList.add('hidden');
-      if (state.positions.length > 0 && !state.isAnalyzing) {
-        els.criticalMomentsList.innerHTML =
-          '<div class="empty-state">Partida sólida. O Stockfish não encontrou erros graves.</div>';
-      } else {
-        els.criticalMomentsList.innerHTML =
-          '<div class="empty-state">Os principais erros da partida aparecerão aqui assim que a análise terminar. Clique em qualquer um para ver as setas vermelha e verde no tabuleiro.</div>';
-      }
-      return;
-    }
+    const title = document.createElement('span');
+    title.className = 'critical-move-title';
+    title.textContent = 'Lance ' + moveNotation;
+    titleWrap.appendChild(title);
+    top.appendChild(titleWrap);
 
-    els.criticalCountBadge.textContent = String(moments.length);
-    els.criticalCountBadge.classList.remove('hidden');
+    const sevBadge = document.createElement('span');
+    sevBadge.className = 'severity-badge ' + r.severity.key;
+    sevBadge.textContent =
+      r.severity.symbol ? r.severity.label + ' (' + r.severity.symbol + ')' : r.severity.label;
+    top.appendChild(sevBadge);
 
-    const frag = document.createDocumentFragment();
-    moments.forEach(function (m, idx) {
-      const card = document.createElement('div');
-      card.className = 'critical-item severity-' + m.severity.key;
-      card.dataset.ply = String(m.ply);
-      if (state.currentPly === m.ply) {
-        card.classList.add('active');
-      }
+    card.appendChild(top);
 
-      const moveNotation =
-        m.moverColor === 'w' ? m.moveNumber + '. ' + m.playedSan : m.moveNumber + '... ' + m.playedSan;
-      const evalBeforeStr = ChessApp.board.formatEvalScore(m.evalBefore);
-      const evalAfterStr = ChessApp.board.formatEvalScore(m.evalAfter);
-
-      const top = document.createElement('div');
-      top.className = 'critical-top';
-
-      const title = document.createElement('span');
-      title.className = 'critical-move-title';
-      title.textContent = '#' + (idx + 1) + ' • Lance ' + moveNotation;
-      top.appendChild(title);
-
-      const sevBadge = document.createElement('span');
-      sevBadge.className = 'severity-badge ' + m.severity.key;
-      sevBadge.textContent = m.severity.label + ' (' + m.severity.symbol + ')';
-      top.appendChild(sevBadge);
-
-      card.appendChild(top);
-
-      const meta = document.createElement('div');
-      meta.className = 'critical-meta';
+    const meta = document.createElement('div');
+    meta.className = 'critical-meta';
+    if (r.isMistake || (r.bestSan && r.bestSan !== r.playedSan)) {
       meta.innerHTML =
-        '<span class="move-played-bad">Jogado: ' +
-        escapeHtml(m.playedSan) +
+        '<span class="' +
+        (r.isMistake ? 'move-played-bad' : 'eval-swing') +
+        '">Jogado: ' +
+        escapeHtml(r.playedSan) +
         '</span>' +
         '<span class="move-best-good">Melhor: ' +
-        escapeHtml(m.bestSan) +
+        escapeHtml(r.bestSan) +
         '</span>' +
         '<span class="eval-swing">Avaliação: ' +
         escapeHtml(evalBeforeStr) +
         ' → ' +
         escapeHtml(evalAfterStr) +
         '</span>';
-      card.appendChild(meta);
+    } else {
+      meta.innerHTML =
+        '<span class="move-best-good">Melhor lance da posição</span>' +
+        '<span class="eval-swing">Avaliação: ' +
+        escapeHtml(evalBeforeStr) +
+        ' → ' +
+        escapeHtml(evalAfterStr) +
+        '</span>';
+    }
+    card.appendChild(meta);
 
-      const actions = document.createElement('div');
-      actions.className = 'critical-actions';
+    const actions = document.createElement('div');
+    actions.className = 'critical-actions';
 
-      const explainBtn = document.createElement('button');
-      explainBtn.type = 'button';
-      explainBtn.className = 'btn btn-ai-explain';
+    const explainBtn = document.createElement('button');
+    explainBtn.type = 'button';
+    explainBtn.className = 'btn btn-ai-explain';
 
-      const isLoading = Boolean(state.loadingExplainPly[m.ply]);
-      const cachedAnswer = state.explanations[m.ply];
-      const explainErr = state.explainErrors[m.ply];
-      explainBtn.disabled = isLoading;
-      if (isLoading) {
-        explainBtn.textContent = 'Gerando explicação...';
-      } else if (cachedAnswer) {
-        explainBtn.textContent = 'Atualizar explicação com IA';
-      } else {
-        explainBtn.textContent = 'Explicar jogada com IA';
+    const isLoading = Boolean(state.loadingExplainPly[r.ply]);
+    const cachedAnswer = state.explanations[r.ply];
+    const explainErr = state.explainErrors[r.ply];
+    explainBtn.disabled = isLoading;
+    if (isLoading) {
+      explainBtn.textContent = 'Gerando explicação...';
+    } else if (cachedAnswer) {
+      explainBtn.textContent = 'Atualizar explicação com IA';
+    } else {
+      explainBtn.textContent = 'Explicar este lance com IA';
+    }
+
+    explainBtn.addEventListener('click', function () {
+      requestAiExplanation(r);
+    });
+    actions.appendChild(explainBtn);
+
+    const isCollapsed = Boolean(state.collapsedExplainPly[r.ply]);
+    if (cachedAnswer || explainErr) {
+      const collapseBtn = document.createElement('button');
+      collapseBtn.type = 'button';
+      collapseBtn.className = 'btn btn-collapse-ai' + (isCollapsed ? ' collapsed' : '');
+      collapseBtn.title = isCollapsed ? 'Expandir análise' : 'Recolher análise';
+      collapseBtn.setAttribute('aria-label', isCollapsed ? 'Expandir análise' : 'Recolher análise');
+      collapseBtn.innerHTML = UP_ARROW_SVG;
+      collapseBtn.addEventListener('click', function () {
+        state.collapsedExplainPly[r.ply] = !state.collapsedExplainPly[r.ply];
+        renderReviewPanel();
+      });
+      actions.appendChild(collapseBtn);
+    }
+
+    card.appendChild(actions);
+
+    if (!isCollapsed) {
+      if (cachedAnswer) {
+        const expBox = document.createElement('div');
+        expBox.className = 'ai-explanation-box';
+        expBox.innerHTML = formatAiTextSafe(cachedAnswer);
+        card.appendChild(expBox);
+      } else if (explainErr) {
+        const errBox = document.createElement('div');
+        errBox.className = 'ai-explanation-box error';
+        errBox.textContent = explainErr;
+        card.appendChild(errBox);
+      }
+    }
+
+    return card;
+  }
+
+  function renderReviewPanel() {
+    const h = state.headers || {};
+    const sideName = state.reviewColor === 'b' ? h.Black || 'Pretas' : h.White || 'Brancas';
+    els.reviewPanelTitle.textContent =
+      state.positions.length > 0 ? 'Revisão: ' + sideName : 'Revisão do Jogador';
+
+    els.btnReviewWhite.classList.toggle('active', state.reviewColor === 'w');
+    els.btnReviewBlack.classList.toggle('active', state.reviewColor === 'b');
+    els.btnFilterAll.classList.toggle('active', state.reviewFilter === 'all');
+    els.btnFilterErrors.classList.toggle('active', state.reviewFilter === 'errors');
+
+    if (state.isAnalyzing && state.allReviews.length === 0) {
+      els.reviewSummary.classList.add('hidden');
+      els.reviewControls.classList.add('hidden');
+      els.reviewMovesList.classList.add('hidden');
+      els.reviewCurrentCard.innerHTML =
+        '<div class="empty-state">Calculando lances com o Stockfish... a revisão jogada por jogada vai aparecer aqui em instantes.</div>';
+      return;
+    }
+
+    if (state.allReviews.length === 0) {
+      els.reviewSummary.classList.add('hidden');
+      els.reviewControls.classList.add('hidden');
+      els.reviewMovesList.classList.add('hidden');
+      els.reviewCurrentCard.innerHTML =
+        '<div class="empty-state">Carregue uma partida para ver a análise jogada por jogada, precisão estimada e marcação (!) nas jogadas críticas.</div>';
+      return;
+    }
+
+    const sideMoves = getPlayerSideReviews(state.reviewColor);
+    const filteredMoves = getFilteredPlayerReviews();
+
+    const avgAcc =
+      sideMoves.length > 0
+        ? Math.round(
+            sideMoves.reduce(function (acc, r) {
+              return acc + r.accuracy;
+            }, 0) / sideMoves.length
+          )
+        : 100;
+
+    els.reviewSummary.classList.remove('hidden');
+    els.reviewAccuracyPill.textContent = 'Precisão: ' + avgAcc + '%';
+    els.reviewCountsText.textContent = formatSummaryCounts(sideMoves);
+
+    els.reviewControls.classList.remove('hidden');
+
+    const prevMove = findAdjacentPlayerReview(-1);
+    const nextMove = findAdjacentPlayerReview(1);
+    els.btnReviewPrev.disabled = !prevMove;
+    els.btnReviewNext.disabled = !nextMove;
+
+    const currentIdx = filteredMoves.findIndex(function (r) {
+      return r.ply === state.currentPly;
+    });
+    els.reviewPositionCounter.textContent =
+      (currentIdx >= 0 ? currentIdx + 1 : 0) + ' / ' + filteredMoves.length;
+
+    els.reviewCurrentCard.innerHTML = '';
+    const activeReview = state.reviewsByPly[state.currentPly];
+    if (activeReview && activeReview.moverColor === state.reviewColor) {
+      els.reviewCurrentCard.appendChild(buildReviewVerdictCard(activeReview));
+    } else if (filteredMoves.length === 0) {
+      els.reviewCurrentCard.innerHTML =
+        '<div class="empty-state">Nenhum erro encontrado para ' +
+        escapeHtml(sideName) +
+        ' nesta partida.</div>';
+    } else {
+      const hintBox = document.createElement('div');
+      hintBox.className = 'critical-item';
+      const hintTitle =
+        state.currentPly === 0
+          ? 'Posição inicial da partida.'
+          : 'Lance do adversário no tabuleiro.';
+      hintBox.innerHTML =
+        '<div class="eval-swing" style="margin-bottom:8px;">' +
+        hintTitle +
+        ' Navegue pelas jogadas de ' +
+        escapeHtml(sideName) +
+        ' abaixo.</div>';
+      const jumpBtn = document.createElement('button');
+      jumpBtn.type = 'button';
+      jumpBtn.className = 'btn btn-ai-explain';
+      const jumpTarget = nextMove || prevMove || filteredMoves[0];
+      jumpBtn.textContent = nextMove
+        ? 'Ir para próxima jogada'
+        : 'Ver última jogada analisada';
+      jumpBtn.addEventListener('click', function () {
+        if (jumpTarget) goToPly(jumpTarget.ply);
+      });
+      hintBox.appendChild(jumpBtn);
+      els.reviewCurrentCard.appendChild(hintBox);
+    }
+
+    if (filteredMoves.length === 0) {
+      els.reviewMovesList.classList.add('hidden');
+      els.reviewMovesList.innerHTML = '';
+      return;
+    }
+
+    els.reviewMovesList.classList.remove('hidden');
+    const frag = document.createDocumentFragment();
+    filteredMoves.forEach(function (r) {
+      const rowBtn = document.createElement('button');
+      rowBtn.type = 'button';
+      rowBtn.className = 'review-move-row severity-' + r.severity.key;
+      if (r.ply === state.currentPly) {
+        rowBtn.classList.add('active');
       }
 
-      explainBtn.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        goToPly(m.ply);
-        requestAiExplanation(m);
+      const left = document.createElement('span');
+      left.className = 'review-move-left';
+      const notation =
+        r.moverColor === 'w' ? r.moveNumber + '. ' + r.playedSan : r.moveNumber + '... ' + r.playedSan;
+
+      if (r.isCritical) {
+        const bang = document.createElement('span');
+        bang.className = 'critical-bang';
+        bang.title = 'Jogada crítica';
+        bang.textContent = '!';
+        left.appendChild(bang);
+      }
+
+      const moveText = document.createElement('span');
+      moveText.textContent = notation;
+      left.appendChild(moveText);
+      rowBtn.appendChild(left);
+
+      const right = document.createElement('span');
+      right.className = 'review-move-right';
+
+      const sev = document.createElement('span');
+      sev.className = 'severity-badge ' + r.severity.key;
+      sev.textContent = r.severity.symbol ? r.severity.label + ' ' + r.severity.symbol : r.severity.label;
+      right.appendChild(sev);
+
+      const evalSpan = document.createElement('span');
+      evalSpan.className = 'review-row-eval';
+      evalSpan.textContent = ChessApp.board.formatEvalScore(r.evalAfter);
+      right.appendChild(evalSpan);
+
+      rowBtn.appendChild(right);
+
+      rowBtn.addEventListener('click', function () {
+        goToPly(r.ply);
       });
 
-      actions.appendChild(explainBtn);
-
-      const isCollapsed = Boolean(state.collapsedExplainPly[m.ply]);
-      if (cachedAnswer || explainErr) {
-        const collapseBtn = document.createElement('button');
-        collapseBtn.type = 'button';
-        collapseBtn.className = 'btn btn-collapse-ai' + (isCollapsed ? ' collapsed' : '');
-        collapseBtn.title = isCollapsed ? 'Expandir análise' : 'Recolher análise';
-        collapseBtn.setAttribute('aria-label', isCollapsed ? 'Expandir análise' : 'Recolher análise');
-        collapseBtn.innerHTML = UP_ARROW_SVG;
-        collapseBtn.addEventListener('click', function (ev) {
-          ev.stopPropagation();
-          state.collapsedExplainPly[m.ply] = !state.collapsedExplainPly[m.ply];
-          renderCriticalMoments();
-        });
-        actions.appendChild(collapseBtn);
-      }
-
-      card.appendChild(actions);
-
-      if (!isCollapsed) {
-        if (cachedAnswer) {
-          const expBox = document.createElement('div');
-          expBox.className = 'ai-explanation-box';
-          expBox.innerHTML = formatAiTextSafe(cachedAnswer);
-          expBox.addEventListener('click', function (ev) {
-            ev.stopPropagation();
-          });
-          card.appendChild(expBox);
-        } else if (explainErr) {
-          const errBox = document.createElement('div');
-          errBox.className = 'ai-explanation-box error';
-          errBox.textContent = explainErr;
-          errBox.addEventListener('click', function (ev) {
-            ev.stopPropagation();
-          });
-          card.appendChild(errBox);
-        }
-      }
-
-      card.addEventListener('click', function () {
-        goToPly(m.ply);
-      });
-
-      frag.appendChild(card);
+      frag.appendChild(rowBtn);
     });
 
-    els.criticalMomentsList.innerHTML = '';
-    els.criticalMomentsList.appendChild(frag);
+    els.reviewMovesList.innerHTML = '';
+    els.reviewMovesList.appendChild(frag);
   }
 
   async function requestAiExplanation(moment) {
@@ -578,7 +780,7 @@
     state.loadingExplainPly[moment.ply] = true;
     state.collapsedExplainPly[moment.ply] = false;
     delete state.explainErrors[moment.ply];
-    renderCriticalMoments();
+    renderReviewPanel();
 
     try {
       const answer = await ChessApp.ai.explainCriticalMove(moment, state.gameId);
@@ -593,7 +795,7 @@
       }
     } finally {
       state.loadingExplainPly[moment.ply] = false;
-      renderCriticalMoments();
+      renderReviewPanel();
     }
   }
 
@@ -896,8 +1098,8 @@
     const isDeep = depth >= DEEP_DEPTH;
     state.isAnalyzing = true;
     state.analysisDepth = depth;
-    state.criticalMoments = [];
-    state.criticalByPly = {};
+    state.allReviews = [];
+    state.reviewsByPly = {};
     state.badgeMap = {};
 
     els.btnDeepAnalysis.disabled = true;
@@ -909,7 +1111,7 @@
       '): iniciando Stockfish...';
 
     renderMovesList();
-    renderCriticalMoments();
+    renderReviewPanel();
     renderCurrentPosition();
 
     ChessApp.engine.analyzeGame(state.positions, depth, {
@@ -942,12 +1144,13 @@
         state.isAnalyzing = false;
         state.evals = result.evals;
         state.bestMoves = result.bestMoves;
-        state.criticalMoments = result.moments;
-        state.badgeMap = result.badgeMap;
-        state.criticalByPly = {};
-        result.moments.forEach(function (m) {
-          state.criticalByPly[m.ply] = m;
-        });
+        state.allReviews = result.allReviews || [];
+        state.reviewsByPly = result.reviewsByPly || {};
+        state.badgeMap = result.badgeMap || {};
+
+        const criticalCount = getPlayerSideReviews(state.reviewColor).filter(function (r) {
+          return r.isCritical;
+        }).length;
 
         els.analysisProgressBar.style.width = '100%';
         if (result.depth >= DEEP_DEPTH) {
@@ -958,21 +1161,21 @@
           els.analysisStatusText.textContent =
             'Análise rápida concluída (profundidade ' +
             result.depth +
-            '). Encontramos ' +
-            result.moments.length +
-            ' momento(s) crítico(s).';
+            '). ' +
+            criticalCount +
+            ' jogada(s) crítica(s) marcada(s) com (!).';
           els.btnDeepAnalysis.disabled = false;
         }
 
         renderMovesList();
-        renderCriticalMoments();
+        renderReviewPanel();
         renderCurrentPosition();
       },
       onError: function (err) {
         state.isAnalyzing = false;
         els.btnDeepAnalysis.disabled = false;
         els.analysisStatusText.textContent = err.message || 'Erro ao executar o Stockfish.';
-        renderCriticalMoments();
+        renderReviewPanel();
       }
     });
   }
@@ -987,11 +1190,13 @@
     state.headers = parsed.headers;
     state.positions = parsed.positions;
     state.orientation = opts.orientation === 'black' ? 'black' : 'white';
+    state.reviewColor = state.orientation === 'black' ? 'b' : 'w';
+    state.reviewFilter = 'all';
     state.currentPly = parsed.positions.length - 1;
     state.evals = new Array(parsed.positions.length).fill(null);
     state.bestMoves = new Array(parsed.positions.length).fill(null);
-    state.criticalMoments = [];
-    state.criticalByPly = {};
+    state.allReviews = [];
+    state.reviewsByPly = {};
     state.badgeMap = {};
     state.explanations = {};
     state.loadingExplainPly = {};
@@ -1325,6 +1530,33 @@
 
     els.btnDeepAnalysis.addEventListener('click', function () {
       startAnalysis(DEEP_DEPTH);
+    });
+
+    els.btnReviewWhite.addEventListener('click', function () {
+      if (state.reviewColor === 'w') return;
+      state.reviewColor = 'w';
+      renderReviewPanel();
+    });
+    els.btnReviewBlack.addEventListener('click', function () {
+      if (state.reviewColor === 'b') return;
+      state.reviewColor = 'b';
+      renderReviewPanel();
+    });
+    els.btnFilterAll.addEventListener('click', function () {
+      if (state.reviewFilter === 'all') return;
+      state.reviewFilter = 'all';
+      renderReviewPanel();
+    });
+    els.btnFilterErrors.addEventListener('click', function () {
+      if (state.reviewFilter === 'errors') return;
+      state.reviewFilter = 'errors';
+      renderReviewPanel();
+    });
+    els.btnReviewPrev.addEventListener('click', function () {
+      navigatePlayerReview(-1);
+    });
+    els.btnReviewNext.addEventListener('click', function () {
+      navigatePlayerReview(1);
     });
 
     els.chatForm.addEventListener('submit', handleChatSubmit);

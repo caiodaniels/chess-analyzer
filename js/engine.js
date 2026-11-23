@@ -630,14 +630,26 @@
     };
   }
 
-  function classifyDrop(drop) {
-    if (drop >= 18) {
+  function classifyMove(winDrop, isEngineBest) {
+    if (winDrop >= 18) {
       return { key: 'capivara', label: 'Capivara', symbol: '??' };
     }
-    if (drop >= 9) {
+    if (winDrop >= 9) {
       return { key: 'erro', label: 'Erro', symbol: '?' };
     }
-    return { key: 'imprecisao', label: 'Imprecisão', symbol: '?!' };
+    if (winDrop >= 5) {
+      return { key: 'imprecisao', label: 'Imprecisão', symbol: '?!' };
+    }
+    if (isEngineBest || winDrop < 1) {
+      return { key: 'melhor', label: 'Melhor', symbol: '' };
+    }
+    return { key: 'bom', label: 'Bom', symbol: '' };
+  }
+
+  function computeMoveAccuracy(winDrop) {
+    if (winDrop <= 0) return 100;
+    const acc = 103.1668 * Math.exp(-0.04354 * winDrop) - 3.1669;
+    return Math.max(0, Math.min(100, acc));
   }
 
   function uciToMoveDetails(fen, uci) {
@@ -657,29 +669,32 @@
     };
   }
 
-  function detectCriticalMoments(positions, evals, bestMoves) {
+  function buildGameReview(positions, evals, bestMoves) {
     const winProb = ChessApp.board.winProbabilityWhite;
-    const candidates = [];
+    const allReviews = [];
+    const reviewsByPly = {};
+    const badgeMap = {};
 
     for (let ply = 1; ply < positions.length; ply += 1) {
       const posBefore = positions[ply - 1];
       const posAfter = positions[ply];
-      const evalBefore = evals[ply - 1];
-      const evalAfter = evals[ply];
-      const bestUci = bestMoves[ply - 1];
-
-      if (!evalBefore || !evalAfter || !bestUci) continue;
-      if (posAfter.uci && posAfter.uci === bestUci) continue;
+      const evalBefore = evals[ply - 1] || { type: 'cp', value: 0 };
+      const evalAfter = evals[ply] || { type: 'cp', value: 0 };
+      const bestUci = bestMoves[ply - 1] || null;
 
       const pBefore = winProb(evalBefore);
       const pAfter = winProb(evalAfter);
       const mover = posBefore.turn;
-      const drop = mover === 'w' ? pBefore - pAfter : pAfter - pBefore;
+      const rawDrop = mover === 'w' ? pBefore - pAfter : pAfter - pBefore;
+      const winDrop = Math.max(0, rawDrop);
+      const isEngineBest = Boolean(!bestUci || (posAfter.uci && posAfter.uci === bestUci));
 
-      if (drop < 2.5) continue;
+      const severity = classifyMove(winDrop, isEngineBest);
+      const bestDetails = bestUci
+        ? uciToMoveDetails(posBefore.fen, bestUci)
+        : { san: posAfter.san, from: posAfter.from, to: posAfter.to };
 
-      const bestDetails = uciToMoveDetails(posBefore.fen, bestUci);
-      candidates.push({
+      const review = {
         ply: ply,
         moveNumber: posAfter.moveNumber,
         moverColor: mover,
@@ -694,39 +709,37 @@
         fenBefore: posBefore.fen,
         evalBefore: evalBefore,
         evalAfter: evalAfter,
-        winDrop: drop,
-        severity: classifyDrop(drop)
-      });
+        winDrop: winDrop,
+        accuracy: computeMoveAccuracy(winDrop),
+        severity: severity,
+        isMistake: winDrop >= 5,
+        isCritical: false
+      };
+
+      allReviews.push(review);
+      reviewsByPly[ply] = review;
+      if (review.isMistake) {
+        badgeMap[ply] = severity;
+      }
     }
 
-    const major = candidates.filter(function (c) {
-      return c.winDrop >= 5;
-    });
-    major.sort(function (a, b) {
-      return b.winDrop - a.winDrop;
-    });
-
-    let selected = major.slice(0, 5);
-    if (selected.length < 3) {
-      const minor = candidates
-        .filter(function (c) {
-          return c.winDrop >= 2.5 && c.winDrop < 5;
+    ['w', 'b'].forEach(function (color) {
+      allReviews
+        .filter(function (r) {
+          return r.moverColor === color && r.isMistake;
         })
         .sort(function (a, b) {
           return b.winDrop - a.winDrop;
+        })
+        .slice(0, 5)
+        .forEach(function (r) {
+          r.isCritical = true;
         });
-      selected = selected.concat(minor).slice(0, 3);
-    }
-
-    const badgeMap = {};
-    candidates.forEach(function (c) {
-      if (c.winDrop >= 5) {
-        badgeMap[c.ply] = c.severity;
-      }
     });
 
     return {
-      moments: selected,
+      allReviews: allReviews,
+      reviewsByPly: reviewsByPly,
       badgeMap: badgeMap
     };
   }
@@ -776,11 +789,12 @@
       }
 
       if (myRunId !== currentRunId) return;
-      const result = detectCriticalMoments(positions, evals, bestMoves);
+      const result = buildGameReview(positions, evals, bestMoves);
       onComplete({
         evals: evals,
         bestMoves: bestMoves,
-        moments: result.moments,
+        allReviews: result.allReviews,
+        reviewsByPly: result.reviewsByPly,
         badgeMap: result.badgeMap,
         depth: depth
       });

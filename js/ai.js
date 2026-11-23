@@ -115,10 +115,11 @@
     const colorLabel = moment.moverColor === 'w' ? 'Brancas' : 'Pretas';
     const evalBeforeStr = ChessApp.board.formatEvalScore(moment.evalBefore);
     const evalAfterStr = ChessApp.board.formatEvalScore(moment.evalAfter);
+    const key = moment.severity && moment.severity.key;
+    const isMistake = key === 'capivara' || key === 'erro' || key === 'imprecisao';
 
-    return (
+    const baseInfo =
       'Você é um analista de xadrez objetivo explicando em português do Brasil.\n' +
-      'Analise este erro da partida com base nos dados abaixo:\n\n' +
       '- Posição (FEN antes do lance): ' +
       moment.fenBefore +
       '\n' +
@@ -127,26 +128,52 @@
       ' (lance ' +
       moment.moveNumber +
       ')\n' +
-      '- Lance jogado (errado): ' +
+      '- Lance jogado: ' +
       moment.playedSan +
       ' (' +
       moment.severity.label +
       ')\n' +
-      '- Melhor lance sugerido pelo Stockfish: ' +
+      '- Melhor lance segundo o Stockfish: ' +
       moment.bestSan +
       '\n' +
       '- Avaliação (visão das Brancas): foi de ' +
       evalBeforeStr +
       ' para ' +
       evalAfterStr +
-      '\n\n' +
-      'Responda EXATAMENTE com estes 2 tópicos curtos, diretos e objetivos, sem saudações, sem introdução e sem dicas genéricas:\n' +
-      '**Por que foi um erro:** explique em 1 a 2 frases diretas qual problema tático ou posicional concreto o lance ' +
+      '\n\n';
+
+    if (isMistake) {
+      return (
+        baseInfo +
+        'Responda EXATAMENTE com estes 2 tópicos curtos, diretos e objetivos, sem saudações, sem introdução e sem dicas genéricas:\n' +
+        '**Por que foi um erro:** explique em 1 a 2 frases diretas qual problema tático ou posicional concreto o lance ' +
+        moment.playedSan +
+        ' causou.\n\n' +
+        '**Por que o melhor lance funciona:** explique em 1 a 2 frases diretas o motivo objetivo de ' +
+        moment.bestSan +
+        ' ser melhor.'
+      );
+    }
+
+    if (moment.bestSan && moment.bestSan !== moment.playedSan) {
+      return (
+        baseInfo +
+        'Responda EXATAMENTE com estes 2 tópicos curtos, diretos e objetivos, sem saudações, sem introdução e sem dicas genéricas:\n' +
+        '**Por que o lance funciona:** explique em 1 a 2 frases diretas a ideia tática ou posicional de ' +
+        moment.playedSan +
+        '.\n\n' +
+        '**Alternativa do motor:** explique em 1 frase curta a diferença objetiva para ' +
+        moment.bestSan +
+        '.'
+      );
+    }
+
+    return (
+      baseInfo +
+      'Responda EXATAMENTE com este tópico curto, direto e objetivo, sem saudações, sem introdução e sem dicas genéricas:\n' +
+      '**Por que foi o melhor lance:** explique em 1 a 2 frases diretas a ideia tática ou posicional que torna ' +
       moment.playedSan +
-      ' causou.\n\n' +
-      '**Por que o melhor lance funciona:** explique em 1 a 2 frases diretas o motivo objetivo de ' +
-      moment.bestSan +
-      ' ser melhor.'
+      ' forte nesta posição.'
     );
   }
 

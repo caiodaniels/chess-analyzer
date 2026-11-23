@@ -14,9 +14,9 @@ Página web gratuita, visual e sem necessidade de servidor para analisar partida
   - Barra de avaliação vertical em tempo real.
 - **Análise automática com Stockfish no navegador:**
   - Inicia no modo rápido (profundidade 10) e permite refazer no modo profundo (profundidade 15).
-  - Lista os **Momentos Críticos** (`Capivara`, `Erro`, `Imprecisão`) e desenha setas coloridas no tabuleiro (vermelha para o lance errado jogado e verde para o melhor lance).
+  - **Revisão do Jogador** jogada por jogada com precisão estimada (`%`), classificação de cada lance (`Melhor`, `Bom`, `Imprecisão`, `Erro`, `Capivara`), marcação `!` nas jogadas críticas e setas coloridas no tabuleiro (vermelha para o lance errado jogado e verde para o melhor lance).
 - **Explicações com IA e Chat sobre a Posição:**
-  - Explicação direta e objetiva nos momentos críticos (com botão para recolher/expandir).
+  - Explicação direta e objetiva sob demanda em qualquer jogada analisada (com botão para recolher/expandir).
   - **Chat sobre a Posição:** calcula primeiro no Stockfish (`MultiPV` com os melhores lances e avaliação automática de lances alternativos citados na pergunta em notação em português ou inglês, como `Cf6`, `Bb5`, `roque curto`) antes de enviar para a IA, com setas azuis clicáveis no tabuleiro e reset automático ao trocar de lance.
   - Privacidade total: suas chaves da API ficam salvas apenas no navegador (`localStorage`).
 

@@ -673,11 +673,184 @@ code {
   padding: 10px 4px;
 }
 
-/* Critical Moments */
-.critical-list {
+/* Player Review Panel */
+.review-header-row {
+  flex-wrap: wrap;
+}
+
+.review-color-switch,
+.review-filter-group {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.review-switch-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.review-switch-btn:hover {
+  color: var(--text);
+}
+
+.review-switch-btn.active {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.review-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.accuracy-pill {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(129, 182, 76, 0.2);
+  color: #bef264;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-counts {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.review-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.review-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-counter {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: center;
+}
+
+.review-current-card {
+  margin-bottom: 10px;
+}
+
+.review-moves-list {
+  max-height: 210px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.review-move-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 7px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.review-move-row:hover {
+  background: var(--surface-3);
+}
+
+.review-move-row.active {
+  border-color: var(--accent);
+  background: rgba(129, 182, 76, 0.16);
+}
+
+.review-move-row.severity-capivara {
+  border-left-color: var(--danger);
+}
+
+.review-move-row.severity-erro {
+  border-left-color: #f97316;
+}
+
+.review-move-row.severity-imprecisao {
+  border-left-color: var(--warning);
+}
+
+.review-move-row.severity-melhor {
+  border-left-color: var(--accent);
+}
+
+.review-move-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.review-move-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-row-eval {
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+.critical-bang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .critical-item {
@@ -686,17 +859,7 @@ code {
   border-left: 4px solid var(--warning);
   border-radius: 8px;
   padding: 10px 12px;
-  cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.critical-item:hover {
-  background: var(--surface-3);
-}
-
-.critical-item.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .critical-item.severity-capivara {
@@ -711,12 +874,26 @@ code {
   border-left-color: var(--warning);
 }
 
+.critical-item.severity-melhor {
+  border-left-color: var(--accent);
+}
+
+.critical-item.severity-bom {
+  border-left-color: #4ade80;
+}
+
 .critical-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.critical-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .critical-move-title {
@@ -744,6 +921,16 @@ code {
 .severity-badge.imprecisao {
   background: rgba(245, 158, 11, 0.22);
   color: #fde68a;
+}
+
+.severity-badge.melhor {
+  background: rgba(129, 182, 76, 0.24);
+  color: #bef264;
+}
+
+.severity-badge.bom {
+  background: rgba(74, 222, 128, 0.18);
+  color: #86efac;
 }
 
 .critical-meta {

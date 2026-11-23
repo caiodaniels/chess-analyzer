@@ -219,17 +219,50 @@
           </div>
         </div>
 
-        <!-- Momentos Críticos -->
-        <div class="panel-card critical-card">
-          <div class="panel-heading-row">
-            <h2 class="panel-title">Momentos Críticos</h2>
-            <span id="critical-count-badge" class="count-badge hidden">0</span>
-          </div>
-          <div id="critical-moments-list" class="critical-list">
-            <div class="empty-state">
-              Os principais erros da partida aparecerão aqui assim que a análise terminar. Clique em qualquer um para ver as setas vermelha e verde no tabuleiro.
+        <!-- Revisão do Jogador -->
+        <div class="panel-card review-card">
+          <div class="panel-heading-row review-header-row">
+            <h2 id="review-panel-title" class="panel-title">Revisão do Jogador</h2>
+            <div class="review-color-switch" role="group" aria-label="Cor do jogador analisado">
+              <button id="btn-review-white" type="button" class="review-switch-btn active">Brancas</button>
+              <button id="btn-review-black" type="button" class="review-switch-btn">Pretas</button>
             </div>
           </div>
+
+          <div id="review-summary" class="review-summary hidden">
+            <span id="review-accuracy-pill" class="accuracy-pill">Precisão: --%</span>
+            <span id="review-counts-text" class="summary-counts"></span>
+          </div>
+
+          <div id="review-controls" class="review-controls hidden">
+            <div class="review-filter-group" role="group" aria-label="Filtro de jogadas">
+              <button id="btn-filter-all" type="button" class="review-switch-btn active">Todas</button>
+              <button id="btn-filter-errors" type="button" class="review-switch-btn">Só erros</button>
+            </div>
+            <div class="review-nav-group" role="group" aria-label="Navegação guiada pelas jogadas do jogador">
+              <button id="btn-review-prev" type="button" class="btn btn-secondary btn-sm">
+                <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+                <span>Anterior</span>
+              </button>
+              <span id="review-position-counter" class="review-counter">0 / 0</span>
+              <button id="btn-review-next" type="button" class="btn btn-secondary btn-sm">
+                <span>Próximo</span>
+                <svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="review-current-card" class="review-current-card">
+            <div class="empty-state">
+              Carregue uma partida para ver a análise jogada por jogada, precisão estimada e marcação (!) nas jogadas críticas.
+            </div>
+          </div>
+
+          <div id="review-moves-list" class="review-moves-list hidden"></div>
         </div>
 
         <!-- Mini-Chat sobre a Posição -->
