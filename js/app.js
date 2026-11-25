@@ -86,6 +86,9 @@
     els.reviewSummary = document.getElementById('review-summary');
     els.reviewAccuracyPill = document.getElementById('review-accuracy-pill');
     els.reviewCountsText = document.getElementById('review-counts-text');
+    els.reviewGraphWrap = document.getElementById('review-graph-wrap');
+    els.reviewGraphReadout = document.getElementById('review-graph-readout');
+    els.advantageGraph = document.getElementById('advantage-graph');
     els.reviewControls = document.getElementById('review-controls');
     els.btnFilterAll = document.getElementById('btn-filter-all');
     els.btnFilterErrors = document.getElementById('btn-filter-errors');
@@ -373,6 +376,147 @@
     updateNavButtons();
     highlightActiveMove();
     renderReviewPanel();
+    renderAdvantageGraph();
+  }
+
+  function evalToNormalized(evalObj) {
+    if (!evalObj) return 0;
+    if (evalObj.type === 'mate') {
+      return evalObj.value >= 0 ? 1 : -1;
+    }
+    const cp = Math.max(-2000, Math.min(2000, evalObj.value || 0));
+    return Math.tanh(cp / 400);
+  }
+
+  function renderAdvantageGraph() {
+    if (!els.reviewGraphWrap || !els.advantageGraph) return;
+
+    const totalPlies = state.positions.length;
+    if (totalPlies <= 1) {
+      els.reviewGraphWrap.classList.add('hidden');
+      els.advantageGraph.innerHTML = '';
+      return;
+    }
+
+    const W = 360;
+    const H = 80;
+    const PAD_LEFT = 22;
+    const PAD_RIGHT = 6;
+    const MID_Y = 40;
+    const AMP = 33;
+    const maxPly = totalPlies - 1;
+    const innerW = W - PAD_LEFT - PAD_RIGHT;
+
+    const pts = [];
+    for (let ply = 0; ply <= maxPly; ply += 1) {
+      const ev = state.evals[ply];
+      if (!ev) continue;
+      const x = PAD_LEFT + (ply / maxPly) * innerW;
+      const y = MID_Y - evalToNormalized(ev) * AMP;
+      pts.push({ ply: ply, x: x, y: y });
+    }
+
+    if (pts.length < 2) {
+      els.reviewGraphWrap.classList.add('hidden');
+      els.advantageGraph.innerHTML = '';
+      return;
+    }
+
+    els.reviewGraphWrap.classList.remove('hidden');
+
+    const lineCoords = pts
+      .map(function (p, i) {
+        return (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
+      })
+      .join(' ');
+    const firstX = pts[0].x.toFixed(1);
+    const lastX = pts[pts.length - 1].x.toFixed(1);
+    const areaPath =
+      lineCoords + ' L' + lastX + ' ' + MID_Y + ' L' + firstX + ' ' + MID_Y + ' Z';
+
+    const curEval = state.evals[state.currentPly] || null;
+    if (els.reviewGraphReadout) {
+      els.reviewGraphReadout.textContent = curEval
+        ? ChessApp.board.formatEvalScore(curEval)
+        : '0.0';
+    }
+
+    const curX = (PAD_LEFT + (state.currentPly / maxPly) * innerW).toFixed(1);
+    const curY = curEval
+      ? (MID_Y - evalToNormalized(curEval) * AMP).toFixed(1)
+      : String(MID_Y);
+
+    let criticalDots = '';
+    const sideCritical = getPlayerSideReviews(state.reviewColor).filter(function (r) {
+      return r.isCritical && state.evals[r.ply];
+    });
+    sideCritical.forEach(function (r) {
+      const cx = (PAD_LEFT + (r.ply / maxPly) * innerW).toFixed(1);
+      const cy = (MID_Y - evalToNormalized(state.evals[r.ply]) * AMP).toFixed(1);
+      criticalDots += '<circle class="adv-critical-dot" cx="' + cx + '" cy="' + cy + '" r="2.5"/>';
+    });
+
+    const cursorMarkup =
+      '<line class="adv-cursor-line" x1="' +
+      curX +
+      '" y1="4" x2="' +
+      curX +
+      '" y2="76"/>' +
+      (curEval
+        ? '<circle class="adv-cursor-dot" cx="' + curX + '" cy="' + curY + '" r="3.2"/>'
+        : '');
+
+    els.advantageGraph.innerHTML =
+      '<svg class="advantage-graph-svg" viewBox="0 0 ' +
+      W +
+      ' ' +
+      H +
+      '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<defs>' +
+      '<clipPath id="adv-clip-pos"><rect x="0" y="0" width="' +
+      W +
+      '" height="' +
+      MID_Y +
+      '"/></clipPath>' +
+      '<clipPath id="adv-clip-neg"><rect x="0" y="' +
+      MID_Y +
+      '" width="' +
+      W +
+      '" height="' +
+      (H - MID_Y) +
+      '"/></clipPath>' +
+      '</defs>' +
+      '<line class="adv-midline" x1="' +
+      PAD_LEFT +
+      '" y1="' +
+      MID_Y +
+      '" x2="' +
+      (W - PAD_RIGHT) +
+      '" y2="' +
+      MID_Y +
+      '"/>' +
+      '<text class="adv-zero-label" x="2" y="' +
+      (MID_Y + 3) +
+      '">0.0</text>' +
+      '<g clip-path="url(#adv-clip-pos)">' +
+      '<path class="adv-area-pos" d="' +
+      areaPath +
+      '"/>' +
+      '<path class="adv-line-pos" d="' +
+      lineCoords +
+      '"/>' +
+      '</g>' +
+      '<g clip-path="url(#adv-clip-neg)">' +
+      '<path class="adv-area-neg" d="' +
+      areaPath +
+      '"/>' +
+      '<path class="adv-line-neg" d="' +
+      lineCoords +
+      '"/>' +
+      '</g>' +
+      criticalDots +
+      cursorMarkup +
+      '</svg>';
   }
 
   function updateNavButtons() {
@@ -662,6 +806,7 @@
       els.reviewSummary.classList.add('hidden');
       els.reviewControls.classList.add('hidden');
       els.reviewMovesList.classList.add('hidden');
+      renderAdvantageGraph();
       els.reviewCurrentCard.innerHTML =
         '<div class="empty-state">Calculando lances com o Stockfish... a revisão jogada por jogada vai aparecer aqui em instantes.</div>';
       return;
@@ -671,6 +816,7 @@
       els.reviewSummary.classList.add('hidden');
       els.reviewControls.classList.add('hidden');
       els.reviewMovesList.classList.add('hidden');
+      renderAdvantageGraph();
       els.reviewCurrentCard.innerHTML =
         '<div class="empty-state">Carregue uma partida para ver a análise jogada por jogada, precisão estimada e marcação (!) nas jogadas críticas.</div>';
       return;
@@ -1174,6 +1320,7 @@
             state.orientation
           );
         }
+        renderAdvantageGraph();
       },
       onComplete: function (result) {
         state.isAnalyzing = false;
@@ -1611,6 +1758,20 @@
     els.btnReviewNext.addEventListener('click', function () {
       navigatePlayerReview(1);
     });
+    if (els.advantageGraph) {
+      els.advantageGraph.addEventListener('click', function (ev) {
+        if (state.positions.length <= 1) return;
+        const svg = els.advantageGraph.querySelector('svg');
+        if (!svg) return;
+        const rect = svg.getBoundingClientRect();
+        if (!rect.width) return;
+        const relX = ((ev.clientX - rect.left) / rect.width) * 360;
+        const maxPly = state.positions.length - 1;
+        const ratio = Math.max(0, Math.min(1, (relX - 22) / (360 - 28)));
+        const targetPly = Math.round(ratio * maxPly);
+        goToPly(targetPly);
+      });
+    }
 
     els.chatForm.addEventListener('submit', handleChatSubmit);
     els.btnClearChat.addEventListener('click', function () {
