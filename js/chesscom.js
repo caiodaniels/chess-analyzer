@@ -109,6 +109,9 @@
       i -= 1
     ) {
       const monthUrl = archives[i];
+      if (typeof monthUrl !== 'string' || monthUrl.indexOf('https://api.chess.com/') !== 0) {
+        continue;
+      }
       const monthResp = await fetch(monthUrl);
       if (!monthResp.ok) continue;
 

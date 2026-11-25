@@ -170,6 +170,9 @@
   function formatEvalScore(evalObj) {
     if (!evalObj) return '0.0';
     if (evalObj.type === 'mate') {
+      if (evalObj.terminal) {
+        return evalObj.value > 0 ? '1-0' : '0-1';
+      }
       const sign = evalObj.value > 0 ? '+' : '-';
       return sign + 'M' + Math.abs(evalObj.value);
     }

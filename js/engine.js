@@ -167,8 +167,10 @@
       const timeoutId = setTimeout(function () {
         if (!finished) {
           finished = true;
-          w.removeEventListener('message', onMsg);
-          w.removeEventListener('error', onErr);
+          try {
+            w.postMessage('stop');
+          } catch (e) {}
+          cleanup();
           resolve({ evalObj: latestEval, bestMoveUci: null });
         }
       }, 20000);
@@ -285,6 +287,9 @@
       const timer = setTimeout(function () {
         if (!finished) {
           finished = true;
+          try {
+            w.postMessage('stop');
+          } catch (e) {}
           cleanup();
           resolve(finalizeLines());
         }
@@ -577,10 +582,35 @@
       }
     }
 
+    const POSITIONAL_SQUARE_PREVS = new Set([
+      'casa',
+      'casas',
+      'coluna',
+      'diagonal',
+      'em',
+      'na',
+      'no',
+      'de',
+      'da',
+      'do',
+      'pela',
+      'pelo'
+    ]);
+    const MOVE_ACTION_RE =
+      /\b(jogar|jogasse|jogue|jogo|fazer|fizesse|avançar|avancar|mover|movesse|tentar|tentasse)\b/i;
+
     for (let i = 0; i < tokens.length; i += 1) {
-      if (looksLikeMoveSyntax(tokens[i])) {
-        return { legal: false, rawToken: tokens[i] };
+      const tok = tokens[i];
+      if (!looksLikeMoveSyntax(tok)) continue;
+
+      const cleanTok = stripSanCheck(tok);
+      if (/^[a-h][1-8]$/.test(cleanTok)) {
+        const prevTok = i > 0 ? tokens[i - 1].toLowerCase() : '';
+        if (POSITIONAL_SQUARE_PREVS.has(prevTok)) continue;
+        if (!MOVE_ACTION_RE.test(question) && !/\be\s+se\b/i.test(question)) continue;
       }
+
+      return { legal: false, rawToken: tok };
     }
 
     return null;
@@ -801,6 +831,10 @@
     } catch (err) {
       if (myRunId === currentRunId) {
         onError(err);
+      }
+    } finally {
+      if (myRunId === currentRunId) {
+        terminateWorker();
       }
     }
   }

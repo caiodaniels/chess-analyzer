@@ -7,22 +7,22 @@ echo.
 where python >nul 2>nul
 if %errorlevel%==0 (
     echo Iniciando servidor local na porta 8000...
-    echo Abrindo http://localhost:8000 no seu navegador...
+    echo Abrindo http://127.0.0.1:8000 no seu navegador...
     echo Mantenha esta janela aberta enquanto usar o site.
     echo.
-    start "" "http://localhost:8000"
-    python -m http.server 8000
+    start "" "http://127.0.0.1:8000"
+    python -m http.server 8000 --bind 127.0.0.1
     goto :eof
 )
 
 where npx >nul 2>nul
 if %errorlevel%==0 (
     echo Python nao encontrado. Iniciando servidor com Node.js...
-    echo Abrindo http://localhost:8000 no seu navegador...
+    echo Abrindo http://127.0.0.1:8000 no seu navegador...
     echo Mantenha esta janela aberta enquanto usar o site.
     echo.
-    start "" "http://localhost:8000"
-    call npx --yes serve -l 8000 .
+    start "" "http://127.0.0.1:8000"
+    call npx --yes serve -l tcp://127.0.0.1:8000 .
     goto :eof
 )
 

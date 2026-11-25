@@ -218,12 +218,14 @@
     const url =
       'https://generativelanguage.googleapis.com/v1beta/models/' +
       encodeURIComponent(model) +
-      ':generateContent?key=' +
-      encodeURIComponent(apiKey);
+      ':generateContent';
 
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
       body: JSON.stringify(payload)
     });
 
@@ -348,10 +350,10 @@
   }
 
   async function discoverGeminiModels(apiKey) {
-    const url =
-      'https://generativelanguage.googleapis.com/v1beta/models?key=' +
-      encodeURIComponent(apiKey);
-    const resp = await fetch(url);
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models';
+    const resp = await fetch(url, {
+      headers: { 'x-goog-api-key': apiKey }
+    });
     if (!resp.ok) {
       throw new Error('Não foi possível listar modelos do Gemini (código ' + resp.status + ').');
     }
@@ -467,7 +469,7 @@
     }
   }
 
-  async function explainCriticalMove(moment, gameId) {
+  async function explainCriticalMove(moment, gameId, options) {
     const settings = getSettings();
     const apiKey = getActiveKey(settings);
     if (!apiKey) {
@@ -476,9 +478,10 @@
       throw err;
     }
 
+    const forceRefresh = Boolean(options && options.forceRefresh);
     const initialModel = getActiveModel(settings);
     const cacheKey = [gameId || 'game', moment.ply, settings.provider, initialModel].join('|');
-    if (cache.has(cacheKey)) {
+    if (!forceRefresh && cache.has(cacheKey)) {
       return cache.get(cacheKey);
     }
 

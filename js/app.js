@@ -32,6 +32,7 @@
     isAnalyzing: false,
     recentGames: [],
     activeRecentGameId: null,
+    searchRequestId: 0,
     chatMessages: [],
     chatRequestId: 0,
     chatBusy: false,
@@ -173,13 +174,45 @@
     els.tabPanelPgn.classList.toggle('active', !isChessCom);
   }
 
+  function sanitizeComplexPgn(pgnText) {
+    const lines = String(pgnText || '').split(/\r?\n/);
+    const headerLines = [];
+    const moveLines = [];
+    lines.forEach(function (line) {
+      if (/^\s*\[.*\]\s*$/.test(line)) {
+        headerLines.push(line.trim());
+      } else {
+        moveLines.push(line);
+      }
+    });
+
+    let movetext = moveLines.join(' ');
+    movetext = movetext.replace(/\{[^}]*\}/g, ' ');
+    movetext = movetext.replace(/;[^\r\n]*/g, ' ');
+    let prev;
+    do {
+      prev = movetext;
+      movetext = movetext.replace(/\([^()]*\)/g, ' ');
+    } while (movetext !== prev);
+    movetext = movetext.replace(/\$\d+/g, ' ').replace(/\s+/g, ' ').trim();
+
+    if (headerLines.length > 0) {
+      return headerLines.join('\n') + '\n\n' + movetext;
+    }
+    return movetext;
+  }
+
   function parsePgnToPositions(pgnText) {
     if (typeof global.Chess !== 'function') {
       throw new Error('Biblioteca Chess.js não foi carregada.');
     }
 
     const chess = new global.Chess();
-    const ok = chess.load_pgn(pgnText.trim(), { sloppy: true });
+    let ok = chess.load_pgn(pgnText.trim(), { sloppy: true });
+    if (!ok) {
+      const cleaned = sanitizeComplexPgn(pgnText);
+      ok = chess.load_pgn(cleaned, { sloppy: true });
+    }
     if (!ok) {
       throw new Error('Não foi possível ler esse PGN. Confira se os lances estão completos.');
     }
@@ -576,7 +609,7 @@
     }
 
     explainBtn.addEventListener('click', function () {
-      requestAiExplanation(r);
+      requestAiExplanation(r, Boolean(cachedAnswer));
     });
     actions.appendChild(explainBtn);
 
@@ -768,7 +801,7 @@
     els.reviewMovesList.appendChild(frag);
   }
 
-  async function requestAiExplanation(moment) {
+  async function requestAiExplanation(moment, forceRefresh) {
     const settings = ChessApp.ai.getSettings();
     if (!ChessApp.ai.getActiveKey(settings)) {
       openSettingsModal(
@@ -783,7 +816,9 @@
     renderReviewPanel();
 
     try {
-      const answer = await ChessApp.ai.explainCriticalMove(moment, state.gameId);
+      const answer = await ChessApp.ai.explainCriticalMove(moment, state.gameId, {
+        forceRefresh: Boolean(forceRefresh)
+      });
       state.explanations[moment.ply] = answer;
     } catch (err) {
       if (err && err.code === 'NO_API_KEY') {
@@ -1268,6 +1303,7 @@
         '</div>';
 
       btn.addEventListener('click', function () {
+        cancelPendingChessComSearch();
         state.activeRecentGameId = g.id;
         renderRecentGamesList(username);
         try {
@@ -1308,6 +1344,14 @@
     } catch (e) {}
   }
 
+  function cancelPendingChessComSearch() {
+    state.searchRequestId += 1;
+    if (els.btnFetchChesscom) {
+      els.btnFetchChesscom.disabled = false;
+      els.btnFetchChesscom.textContent = 'Buscar partidas';
+    }
+  }
+
   async function searchChessComUser(rawUsername) {
     const username = (rawUsername || '').trim();
     if (!username) {
@@ -1315,12 +1359,17 @@
       return;
     }
 
+    state.searchRequestId += 1;
+    const reqId = state.searchRequestId;
+
     els.btnFetchChesscom.disabled = true;
     els.btnFetchChesscom.textContent = 'Buscando...';
     showLoaderFeedback('Buscando partidas recentes de "' + username + '" no Chess.com...', '');
 
     try {
       const games = await ChessApp.chesscom.fetchRecentGames(username, 20);
+      if (reqId !== state.searchRequestId) return;
+
       const resolvedName = games[0].userName || username;
       saveChessComUsername(resolvedName);
       els.chesscomUsername.value = resolvedName;
@@ -1343,10 +1392,13 @@
         'success'
       );
     } catch (err) {
+      if (reqId !== state.searchRequestId) return;
       showLoaderFeedback(err.message || 'Erro ao buscar partidas.', 'error');
     } finally {
-      els.btnFetchChesscom.disabled = false;
-      els.btnFetchChesscom.textContent = 'Buscar partidas';
+      if (reqId === state.searchRequestId) {
+        els.btnFetchChesscom.disabled = false;
+        els.btnFetchChesscom.textContent = 'Buscar partidas';
+      }
     }
   }
 
@@ -1362,6 +1414,7 @@
       return;
     }
     try {
+      cancelPendingChessComSearch();
       state.activeRecentGameId = null;
       loadGameFromPgn(text, { orientation: 'white' });
       showLoaderFeedback('PGN carregado com sucesso. Analisando os lances...', 'success');
@@ -1660,6 +1713,11 @@
   }
 
   function init() {
+    if (global.location && global.location.protocol === 'file:') {
+      const banner = document.getElementById('file-protocol-banner');
+      if (banner) banner.classList.remove('hidden');
+    }
+
     cacheDom();
     bindEvents();
     refreshAiStatusBadge();
