@@ -1017,8 +1017,7 @@
     els.btnChatSend.disabled = state.chatBusy;
 
     if (state.chatMessages.length === 0 && !state.chatStatus) {
-      els.chatMessages.innerHTML =
-        '<div class="chat-empty-state">Pergunte sobre o lance ou posição atual (ex: "por que não posso jogar Cf6?" ou "qual o plano aqui?"). O Stockfish calcula primeiro antes da IA responder.</div>';
+      els.chatMessages.innerHTML = '';
       return;
     }
 
@@ -1340,22 +1339,14 @@
         state.reviewsByPly = result.reviewsByPly || {};
         state.badgeMap = result.badgeMap || {};
 
-        const criticalCount = getPlayerSideReviews(state.reviewColor).filter(function (r) {
-          return r.isCritical;
-        }).length;
-
         els.analysisProgressBar.style.width = '100%';
         if (result.depth >= DEEP_DEPTH) {
           els.analysisStatusText.textContent =
-            'Análise profunda concluída (profundidade ' + result.depth + ').';
+            'Análise profunda concluída. Profundidade ' + result.depth;
           els.btnDeepAnalysis.disabled = true;
         } else {
           els.analysisStatusText.textContent =
-            'Análise rápida concluída (profundidade ' +
-            result.depth +
-            '). ' +
-            criticalCount +
-            ' jogada(s) crítica(s) marcada(s) com (!).';
+            'Análise concluída. Profundidade ' + result.depth;
           els.btnDeepAnalysis.disabled = false;
         }
 
@@ -1466,23 +1457,10 @@
         els.gameResultBadge.classList.add('hidden');
       }
 
-      const criticalCount = getPlayerSideReviews(state.reviewColor).filter(function (r) {
-        return r.isCritical;
-      }).length;
       els.analysisProgressBar.style.width = '100%';
-      if (state.analysisDepth >= DEEP_DEPTH) {
-        els.analysisStatusText.textContent =
-          'Análise profunda restaurada da sessão (profundidade ' + state.analysisDepth + ').';
-        els.btnDeepAnalysis.disabled = true;
-      } else {
-        els.analysisStatusText.textContent =
-          'Análise restaurada da sessão (profundidade ' +
-          state.analysisDepth +
-          '). ' +
-          criticalCount +
-          ' jogada(s) crítica(s) marcada(s) com (!).';
-        els.btnDeepAnalysis.disabled = false;
-      }
+      els.analysisStatusText.textContent =
+        'Análise restaurada da sessão. Profundidade ' + state.analysisDepth;
+      els.btnDeepAnalysis.disabled = state.analysisDepth >= DEEP_DEPTH;
 
       resetChatForCurrentPly();
       updatePlayerBars();
@@ -1547,8 +1525,7 @@
     const visibleCount = Math.min(games.length, state.recentGamesVisible);
     const visibleGames = games.slice(0, visibleCount);
 
-    els.recentGamesTitle.textContent =
-      'Últimas ' + visibleGames.length + ' de ' + games.length + ' Partidas de ' + displayUser;
+    els.recentGamesTitle.textContent = 'Histórico ' + visibleGames.length + '/' + games.length;
     els.recentGamesSection.classList.remove('hidden');
 
     if (els.recentGamesMoreWrap) {
@@ -1604,7 +1581,7 @@
             orientation: g.userColor
           });
           showLoaderFeedback(
-            'Partida contra ' + g.opponent + ' carregada. Iniciando análise...',
+            'Partida do histórico de ' + displayUser + ' carregada.',
             'success'
           );
         } catch (err) {
@@ -1688,9 +1665,7 @@
       });
 
       showLoaderFeedback(
-        'Última partida de ' +
-          resolvedName +
-          ' carregada. Escolha outras partidas recentes na lista abaixo do tabuleiro.',
+        'Última partida de ' + resolvedName + ' carregada.',
         'success'
       );
     } catch (err) {

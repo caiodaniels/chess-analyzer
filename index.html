@@ -102,9 +102,6 @@
               Buscar partidas
             </button>
           </form>
-          <p class="helper-text">
-            A última partida abre na hora (com o tabuleiro virado para a sua cor) e as últimas 20 ficam listadas abaixo para trocar com 1 clique.
-          </p>
         </div>
 
         <div id="tab-panel-pgn" class="tab-panel hidden" role="tabpanel">
@@ -296,11 +293,7 @@
                 Limpar
               </button>
             </div>
-            <div id="chat-messages" class="chat-messages">
-              <div class="chat-empty-state">
-                Pergunte sobre o lance ou posição atual (ex: "por que não posso jogar Cf6?" ou "qual o plano aqui?"). O Stockfish calcula primeiro antes da IA responder.
-              </div>
-            </div>
+            <div id="chat-messages" class="chat-messages"></div>
             <form id="chat-form" class="chat-form">
               <label for="chat-input" class="sr-only">Pergunta sobre a posição atual</label>
               <input
@@ -334,11 +327,9 @@
 
       <!-- Lista de partidas recentes do Chess.com -->
       <section id="recent-games-section" class="panel-card recent-games-section hidden" aria-label="Últimas partidas no Chess.com">
-        <div class="panel-heading-row">
-          <div>
-            <h2 id="recent-games-title" class="panel-title">Últimas Partidas no Chess.com</h2>
-            <p class="helper-text">Clique em qualquer partida abaixo para abrir no tabuleiro e analisar automaticamente.</p>
-          </div>
+        <div class="panel-heading-row recent-games-header">
+          <h2 id="recent-games-title" class="panel-title">Histórico</h2>
+          <span class="recent-games-hint">Selecione outras partidas abaixo</span>
         </div>
         <div id="recent-games-list" class="recent-games-list"></div>
         <div id="recent-games-more-wrap" class="recent-games-more hidden">
@@ -353,7 +344,7 @@
     <div class="modal-backdrop" data-close-modal="settings-modal"></div>
     <div class="modal-content">
       <div class="modal-header">
-        <h2 id="settings-modal-title">Configurar IA (Explicação de Lances)</h2>
+        <h2 id="settings-modal-title">Configurar IA</h2>
         <button type="button" class="btn-close" data-close-modal="settings-modal" aria-label="Fechar">&times;</button>
       </div>
       <div class="modal-body">
