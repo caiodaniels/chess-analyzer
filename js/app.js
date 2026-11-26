@@ -5,14 +5,18 @@
 
   const FAST_DEPTH = 10;
   const DEEP_DEPTH = 15;
+  const RECENT_GAMES_PAGE_SIZE = 5;
   const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   const CHESSCOM_USER_STORAGE_KEY = 'xadrez_analise_chesscom_user';
+  const SESSION_GAME_STORAGE_KEY = 'xadrez_analise_session_game';
+  const MAX_SESSION_STORAGE_CHARS = 250000;
 
   const UP_ARROW_SVG =
     '<svg class="btn-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>';
 
   const state = {
     gameId: '',
+    rawPgn: '',
     headers: {},
     positions: [],
     currentPly: 0,
@@ -31,6 +35,8 @@
     analysisDepth: null,
     isAnalyzing: false,
     recentGames: [],
+    recentGamesVisible: RECENT_GAMES_PAGE_SIZE,
+    recentGamesUser: '',
     activeRecentGameId: null,
     searchRequestId: 0,
     chatMessages: [],
@@ -110,6 +116,8 @@
     els.recentGamesSection = document.getElementById('recent-games-section');
     els.recentGamesTitle = document.getElementById('recent-games-title');
     els.recentGamesList = document.getElementById('recent-games-list');
+    els.recentGamesMoreWrap = document.getElementById('recent-games-more-wrap');
+    els.btnShowMoreGames = document.getElementById('btn-show-more-games');
 
     els.btnOpenSettings = document.getElementById('btn-open-settings');
     els.btnOpenTutorial = document.getElementById('btn-open-tutorial');
@@ -535,6 +543,7 @@
     state.currentPly = clamped;
     if (changed) {
       resetChatForCurrentPly();
+      saveSessionGame();
     }
     renderCurrentPosition();
   }
@@ -966,6 +975,7 @@
         forceRefresh: Boolean(forceRefresh)
       });
       state.explanations[moment.ply] = answer;
+      saveSessionGame();
     } catch (err) {
       if (err && err.code === 'NO_API_KEY') {
         openSettingsModal(
@@ -1352,6 +1362,7 @@
         renderMovesList();
         renderReviewPanel();
         renderCurrentPosition();
+        saveSessionGame();
       },
       onError: function (err) {
         state.isAnalyzing = false;
@@ -1362,13 +1373,137 @@
     });
   }
 
+  function clearSessionGame() {
+    try {
+      if (global.sessionStorage) {
+        global.sessionStorage.removeItem(SESSION_GAME_STORAGE_KEY);
+      }
+    } catch (e) {}
+  }
+
+  function saveSessionGame() {
+    try {
+      if (!global.sessionStorage || state.isAnalyzing || !state.rawPgn || state.positions.length <= 1) {
+        return;
+      }
+      if (!Array.isArray(state.evals) || state.evals.length !== state.positions.length) return;
+      if (state.evals.some(function (ev) { return !ev; })) return;
+
+      const payload = {
+        v: 1,
+        gameId: state.gameId,
+        pgn: state.rawPgn,
+        orientation: state.orientation,
+        reviewColor: state.reviewColor,
+        currentPly: state.currentPly,
+        analysisDepth: state.analysisDepth,
+        activeRecentGameId: state.activeRecentGameId,
+        evals: state.evals,
+        bestMoves: state.bestMoves,
+        explanations: state.explanations || {}
+      };
+      const serialized = JSON.stringify(payload);
+      if (serialized.length > MAX_SESSION_STORAGE_CHARS) return;
+      global.sessionStorage.setItem(SESSION_GAME_STORAGE_KEY, serialized);
+    } catch (e) {}
+  }
+
+  function restoreSessionGame() {
+    try {
+      if (!global.sessionStorage || typeof ChessApp.engine.buildGameReview !== 'function') {
+        return false;
+      }
+      const raw = global.sessionStorage.getItem(SESSION_GAME_STORAGE_KEY);
+      if (!raw) return false;
+
+      const saved = JSON.parse(raw);
+      if (!saved || saved.v !== 1 || !saved.pgn) {
+        clearSessionGame();
+        return false;
+      }
+
+      const parsed = parsePgnToPositions(saved.pgn);
+      if (
+        !Array.isArray(saved.evals) ||
+        !Array.isArray(saved.bestMoves) ||
+        saved.evals.length !== parsed.positions.length ||
+        saved.bestMoves.length !== parsed.positions.length
+      ) {
+        clearSessionGame();
+        return false;
+      }
+
+      const result = ChessApp.engine.buildGameReview(parsed.positions, saved.evals, saved.bestMoves);
+
+      state.gameId = saved.gameId || 'session-' + Date.now();
+      state.rawPgn = saved.pgn;
+      state.headers = parsed.headers;
+      state.positions = parsed.positions;
+      state.orientation = saved.orientation === 'black' ? 'black' : 'white';
+      state.reviewColor = saved.reviewColor === 'b' ? 'b' : 'w';
+      state.reviewFilter = 'all';
+      state.currentPly = Math.max(
+        0,
+        Math.min(parsed.positions.length - 1, Number.isInteger(saved.currentPly) ? saved.currentPly : parsed.positions.length - 1)
+      );
+      state.evals = saved.evals;
+      state.bestMoves = saved.bestMoves;
+      state.allReviews = result.allReviews || [];
+      state.reviewsByPly = result.reviewsByPly || {};
+      state.badgeMap = result.badgeMap || {};
+      state.explanations = saved.explanations && typeof saved.explanations === 'object' ? saved.explanations : {};
+      state.loadingExplainPly = {};
+      state.explainErrors = {};
+      state.collapsedExplainPly = {};
+      state.analysisDepth = saved.analysisDepth || FAST_DEPTH;
+      state.isAnalyzing = false;
+      state.activeRecentGameId = saved.activeRecentGameId || null;
+
+      if (parsed.headers && parsed.headers.Result) {
+        els.gameResultBadge.textContent = 'Resultado: ' + parsed.headers.Result;
+        els.gameResultBadge.classList.remove('hidden');
+      } else {
+        els.gameResultBadge.classList.add('hidden');
+      }
+
+      const criticalCount = getPlayerSideReviews(state.reviewColor).filter(function (r) {
+        return r.isCritical;
+      }).length;
+      els.analysisProgressBar.style.width = '100%';
+      if (state.analysisDepth >= DEEP_DEPTH) {
+        els.analysisStatusText.textContent =
+          'Análise profunda restaurada da sessão (profundidade ' + state.analysisDepth + ').';
+        els.btnDeepAnalysis.disabled = true;
+      } else {
+        els.analysisStatusText.textContent =
+          'Análise restaurada da sessão (profundidade ' +
+          state.analysisDepth +
+          '). ' +
+          criticalCount +
+          ' jogada(s) crítica(s) marcada(s) com (!).';
+        els.btnDeepAnalysis.disabled = false;
+      }
+
+      resetChatForCurrentPly();
+      updatePlayerBars();
+      renderMovesList();
+      renderCurrentPosition();
+      return true;
+    } catch (e) {
+      clearSessionGame();
+      return false;
+    }
+  }
+
   function loadGameFromPgn(pgnText, options) {
     const opts = options || {};
     ChessApp.engine.cancelAnalysis();
+    clearSessionGame();
 
     const parsed = parsePgnToPositions(pgnText);
 
     state.gameId = opts.gameId || 'pgn-' + Date.now();
+    state.rawPgn = pgnText;
     state.headers = parsed.headers;
     state.positions = parsed.positions;
     state.orientation = opts.orientation === 'black' ? 'black' : 'white';
@@ -1403,15 +1538,25 @@
     const games = state.recentGames;
     if (!games || games.length === 0) {
       els.recentGamesSection.classList.add('hidden');
+      if (els.recentGamesMoreWrap) els.recentGamesMoreWrap.classList.add('hidden');
       return;
     }
 
+    const displayUser = username || state.recentGamesUser || 'Chess.com';
+    state.recentGamesUser = displayUser;
+    const visibleCount = Math.min(games.length, state.recentGamesVisible);
+    const visibleGames = games.slice(0, visibleCount);
+
     els.recentGamesTitle.textContent =
-      'Últimas ' + games.length + ' Partidas de ' + username + ' no Chess.com';
+      'Últimas ' + visibleGames.length + ' de ' + games.length + ' Partidas de ' + displayUser;
     els.recentGamesSection.classList.remove('hidden');
 
+    if (els.recentGamesMoreWrap) {
+      els.recentGamesMoreWrap.classList.toggle('hidden', visibleCount >= games.length);
+    }
+
     const frag = document.createDocumentFragment();
-    games.forEach(function (g) {
+    visibleGames.forEach(function (g) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'recent-game-item';
@@ -1499,7 +1644,9 @@
     }
   }
 
-  async function searchChessComUser(rawUsername) {
+  async function searchChessComUser(rawUsername, options) {
+    const opts = options || {};
+    const keepCurrentGame = Boolean(opts.keepCurrentGame);
     const username = (rawUsername || '').trim();
     if (!username) {
       showLoaderFeedback('Digite o nome de usuário do Chess.com para buscar.', 'error');
@@ -1511,7 +1658,9 @@
 
     els.btnFetchChesscom.disabled = true;
     els.btnFetchChesscom.textContent = 'Buscando...';
-    showLoaderFeedback('Buscando partidas recentes de "' + username + '" no Chess.com...', '');
+    if (!keepCurrentGame) {
+      showLoaderFeedback('Buscando partidas recentes de "' + username + '" no Chess.com...', '');
+    }
 
     try {
       const games = await ChessApp.chesscom.fetchRecentGames(username, 20);
@@ -1522,6 +1671,14 @@
       els.chesscomUsername.value = resolvedName;
 
       state.recentGames = games;
+      state.recentGamesVisible = RECENT_GAMES_PAGE_SIZE;
+      state.recentGamesUser = resolvedName;
+
+      if (keepCurrentGame) {
+        renderRecentGamesList(resolvedName);
+        return;
+      }
+
       state.activeRecentGameId = games[0].id;
       renderRecentGamesList(resolvedName);
 
@@ -1533,14 +1690,14 @@
       showLoaderFeedback(
         'Última partida de ' +
           resolvedName +
-          ' carregada. Você também pode escolher entre as ' +
-          games.length +
-          ' partidas listadas abaixo.',
+          ' carregada. Escolha outras partidas recentes na lista abaixo do tabuleiro.',
         'success'
       );
     } catch (err) {
       if (reqId !== state.searchRequestId) return;
-      showLoaderFeedback(err.message || 'Erro ao buscar partidas.', 'error');
+      if (!keepCurrentGame) {
+        showLoaderFeedback(err.message || 'Erro ao buscar partidas.', 'error');
+      }
     } finally {
       if (reqId === state.searchRequestId) {
         els.btnFetchChesscom.disabled = false;
@@ -1735,13 +1892,21 @@
     els.btnReviewWhite.addEventListener('click', function () {
       if (state.reviewColor === 'w') return;
       state.reviewColor = 'w';
+      saveSessionGame();
       renderReviewPanel();
     });
     els.btnReviewBlack.addEventListener('click', function () {
       if (state.reviewColor === 'b') return;
       state.reviewColor = 'b';
+      saveSessionGame();
       renderReviewPanel();
     });
+    if (els.btnShowMoreGames) {
+      els.btnShowMoreGames.addEventListener('click', function () {
+        state.recentGamesVisible += RECENT_GAMES_PAGE_SIZE;
+        renderRecentGamesList(state.recentGamesUser);
+      });
+    }
     els.btnFilterAll.addEventListener('click', function () {
       if (state.reviewFilter === 'all') return;
       state.reviewFilter = 'all';
@@ -1889,7 +2054,11 @@
     const savedUser = getSavedChessComUsername();
     if (savedUser) {
       els.chesscomUsername.value = savedUser;
-      searchChessComUser(savedUser);
+    }
+
+    const restored = restoreSessionGame();
+    if (savedUser) {
+      searchChessComUser(savedUser, { keepCurrentGame: restored });
     }
   }
 

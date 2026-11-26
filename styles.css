@@ -406,9 +406,11 @@ code {
 .workspace {
   display: grid;
   grid-template-columns: minmax(340px, 535px) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
   grid-template-areas:
     "board loader"
-    "board analysis";
+    "board analysis"
+    "recent analysis";
   gap: 14px 22px;
   align-items: start;
 }
@@ -1414,10 +1416,23 @@ code {
 }
 
 /* Recent Games List */
+.recent-games-section {
+  grid-area: recent;
+}
+
 .recent-games-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.recent-games-more {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
 }
 
 .recent-game-item {
@@ -1682,11 +1697,18 @@ code {
 @media (max-width: 960px) {
   .workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
     grid-template-areas:
       "loader"
       "board"
-      "analysis";
+      "analysis"
+      "recent";
     gap: 14px;
+  }
+
+  .recent-games-list {
+    max-height: none;
+    overflow-y: visible;
   }
 
   .board-wrapper {

@@ -846,6 +846,7 @@
 
   ChessApp.engine = {
     analyzeGame,
+    buildGameReview,
     cancelAnalysis,
     analyzePositionMultiPV,
     extractAlternativeMoveFromQuestion,
